@@ -1,0 +1,15 @@
+# SAMPLE ONLY — not enabled by default. Confirm behavior with pinned LiteLLM version.
+# If Ollama runs on the host rather than compose, change api_base to http://host.docker.internal:11434.
+model_list:
+  - model_name: chat
+    litellm_params:
+      model: ollama_chat/qwen3:4b
+      api_base: http://ollama:11434
+  - model_name: coding
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:7b
+      api_base: http://ollama:11434
+  - model_name: judge
+    litellm_params:
+      model: ollama_chat/qwen3:8b
+      api_base: http://ollama:11434

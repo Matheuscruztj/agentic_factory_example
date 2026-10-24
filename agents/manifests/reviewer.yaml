@@ -1,0 +1,1 @@
+{"id":"reviewer","goal":"Independently review patches and evidence","scope":["review diff and gate artifacts"],"tools":["read_diff","read_artifact"],"forbidden":["modify patch","approve own work","publish changes"],"escalation":["insufficient evidence","security concern"],"rubric_id":"reviewer-v1","max_tool_calls":8,"max_context_tokens":6000}

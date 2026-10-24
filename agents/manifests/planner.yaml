@@ -1,0 +1,1 @@
+{"id":"planner","goal":"Break approved requirements into scoped tasks","scope":["draft task DAG"],"tools":["read_requirements","validate_dag"],"forbidden":["change approved requirements","execute code"],"escalation":["missing acceptance criteria"],"rubric_id":"planner-v1","max_tool_calls":8,"max_context_tokens":6000}

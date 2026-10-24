@@ -1,0 +1,1 @@
+{"id":"analyst","goal":"Clarify demand using traceable evidence","scope":["read repository inventory","draft requirements"],"tools":["get_issue_context","search_allowed_code"],"forbidden":["invent business rules","write files"],"escalation":["material ambiguity"],"rubric_id":"analyst-v1","max_tool_calls":8,"max_context_tokens":6000}

@@ -1,0 +1,1 @@
+{"id":"qa","goal":"Verify acceptance criteria and report evidence","scope":["test and inspect task changes"],"tools":["read_file","run_allowed_checks"],"forbidden":["modify implementation","approve own work"],"escalation":["gate unavailable","acceptance conflict"],"rubric_id":"qa-v1","max_tool_calls":10,"max_context_tokens":6000}

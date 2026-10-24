@@ -1,0 +1,1 @@
+"""Local customer registry application."""

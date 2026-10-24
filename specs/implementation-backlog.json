@@ -1,0 +1,1427 @@
+{
+  "schema_version": 1,
+  "source": "docs/03-TASKS-POR-FASES.md",
+  "purpose": "bootstrap-implementation-plan-not-runtime-tasks",
+  "tasks": [
+    {
+      "id": "FAC-001",
+      "phase": "P00",
+      "title": "Auditar repositório e congelar baseline",
+      "status": "not_started",
+      "depends_on": [],
+      "owner_role": "Tech Lead",
+      "paths": "docs/baseline.md; docs/adr/`",
+      "acceptance": "Nenhum arquivo legado é reescrito sem evidência do diagnóstico.",
+      "validation": "Revisão humana do inventário + git status sem alterações inesperadas"
+    },
+    {
+      "id": "FAC-002",
+      "phase": "P00",
+      "title": "Formalizar invariantes, ADRs e Definition of Done",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-001"
+      ],
+      "owner_role": "Architect",
+      "paths": "docs/adr/*.md; docs/definition-of-done.md`",
+      "acceptance": "ADRs explicitam owner de estados e proibições verificáveis.",
+      "validation": "Checklist de ADRs + auditoria humana"
+    },
+    {
+      "id": "FAC-003",
+      "phase": "P00",
+      "title": "Criar .env.example, .gitignore e segredo local",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-001",
+        "FAC-002"
+      ],
+      "owner_role": "Platform",
+      "paths": ".env.example; .env; .gitignore; config/`",
+      "acceptance": "Nenhuma credencial real está no repositório; boot aceita integrações desabilitadas.",
+      "validation": "git check-ignore .env; Gitleaks scan local"
+    },
+    {
+      "id": "FAC-004",
+      "phase": "P00",
+      "title": "Integrar preflight offline e live read-only",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-003"
+      ],
+      "owner_role": "Platform",
+      "paths": "scripts/validate_env.py; tests/test_validate_env.py`",
+      "acceptance": "Diferencia chave inválida e rede indisponível sem enviar mensagens ou criar Issues.",
+      "validation": "python -m unittest discover -s tests -p test_validate_env.py -q"
+    },
+    {
+      "id": "FAC-005",
+      "phase": "P00",
+      "title": "Spikes OpenBot, LangGraph e Ollama host",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-002",
+        "FAC-003"
+      ],
+      "owner_role": "Architect/AI",
+      "paths": "docs/spikes/{openbot,langgraph,ollama}.md`",
+      "acceptance": "Contratos e limitações citados com versões, ou bloqueio técnico explícito.",
+      "validation": "Smoke manual por spike + resultados e comandos em Markdown"
+    },
+    {
+      "id": "FAC-006",
+      "phase": "P00",
+      "title": "Scripts de operação com status compacto",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-004"
+      ],
+      "owner_role": "Platform",
+      "paths": "scripts/{doctor,validate_checks,local_boot}.py; Makefile`",
+      "acceptance": "Um comando devolve status claro sem ler milhares de linhas de log.",
+      "validation": "pytest tests/unit/test_script_contracts.py"
+    },
+    {
+      "id": "FAC-007",
+      "phase": "P01",
+      "title": "Configurar uv workspace e qualidade Python",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-002",
+        "FAC-006"
+      ],
+      "owner_role": "Platform",
+      "paths": "pyproject.toml; uv.lock; ruff.toml; packages/*/pyproject.toml`",
+      "acceptance": "Workspace Python instala e roda lint/test em checkout limpo.",
+      "validation": "uv sync; uv run ruff check .; uv run pytest -q"
+    },
+    {
+      "id": "FAC-008",
+      "phase": "P01",
+      "title": "Configurar React/Vite/shadcn e tooling",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-002",
+        "FAC-006"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/factory-web/{package.json,vite.config.ts,src/}; pnpm-lock.yaml`",
+      "acceptance": "Frontend compila com design responsivo e sem erros TS.",
+      "validation": "pnpm --dir apps/factory-web build; pnpm --dir apps/factory-web test"
+    },
+    {
+      "id": "FAC-009",
+      "phase": "P01",
+      "title": "Definir Compose base e redes locais",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-003",
+        "FAC-007"
+      ],
+      "owner_role": "Platform",
+      "paths": "infra/compose/base.yml; infra/compose/README.md`",
+      "acceptance": "Serviços base sobem e persistem dados com restart sem portas públicas.",
+      "validation": "docker compose -f infra/compose/base.yml config; docker compose ps"
+    },
+    {
+      "id": "FAC-010",
+      "phase": "P01",
+      "title": "Criar API FastAPI e injeção de configuração",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-007",
+        "FAC-009"
+      ],
+      "owner_role": "Backend",
+      "paths": "apps/factory-api/src/factory_api/{main,config,dependencies}.py`",
+      "acceptance": "API fornece liveness e readiness distinto por dependência.",
+      "validation": "pytest tests/integration/test_api_health.py"
+    },
+    {
+      "id": "FAC-011",
+      "phase": "P01",
+      "title": "Configurar DB SQLAlchemy, Alembic e sessões",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-009",
+        "FAC-010"
+      ],
+      "owner_role": "Database",
+      "paths": "packages/shared-contracts/src/shared_contracts/db.py; apps/factory-api/alembic/`",
+      "acceptance": "Sessões fecham corretamente e migrations são reproduzíveis.",
+      "validation": "uv run alembic upgrade head; pytest tests/integration/test_db_migrations.py"
+    },
+    {
+      "id": "FAC-012",
+      "phase": "P01",
+      "title": "Estabelecer autenticação local do operador",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-010",
+        "FAC-011"
+      ],
+      "owner_role": "Security/Backend",
+      "paths": "apps/factory-api/src/factory_api/auth/; apps/factory-web/src/features/auth/`",
+      "acceptance": "Acesso a 127.0.0.1 não substitui autenticação; segredo nunca vai para browser.",
+      "validation": "pytest tests/security/test_authz_local.py"
+    },
+    {
+      "id": "FAC-013",
+      "phase": "P01",
+      "title": "Health dashboard mínimo conectado à API",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-008",
+        "FAC-010",
+        "FAC-012"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/factory-web/src/features/dashboard/; src/lib/api/`",
+      "acceptance": "UI distingue configuração pendente de falha operacional.",
+      "validation": "Vitest para status UI + Playwright smoke inicial"
+    },
+    {
+      "id": "FAC-014",
+      "phase": "P02",
+      "title": "Especificar domínio e regras do cadastro",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-002"
+      ],
+      "owner_role": "Analyst",
+      "paths": "docs/registry-domain.md; specs/demands/seed-registry/`",
+      "acceptance": "Contrato da demo claro, com dados sensíveis sintéticos e sem requisito indefinido.",
+      "validation": "Revisão humana + schema de aceites"
+    },
+    {
+      "id": "FAC-015",
+      "phase": "P02",
+      "title": "Criar FastAPI separado para cadastro",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-007",
+        "FAC-014"
+      ],
+      "owner_role": "Backend",
+      "paths": "apps/customer-registry/api/src/customer_registry/{main,routers,schemas}/`",
+      "acceptance": "API CRUD atende contrato e não depende da Factory API para funcionar.",
+      "validation": "pytest apps/customer-registry/api/tests/unit"
+    },
+    {
+      "id": "FAC-016",
+      "phase": "P02",
+      "title": "Criar tabelas e migrations cadastro",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-011",
+        "FAC-014"
+      ],
+      "owner_role": "Database",
+      "paths": "apps/customer-registry/api/alembic/versions/; models/user.py`",
+      "acceptance": "Email duplicado gera conflito 409 e schema tem constraints.",
+      "validation": "pytest apps/customer-registry/api/tests/integration/test_users_db.py"
+    },
+    {
+      "id": "FAC-017",
+      "phase": "P02",
+      "title": "Criar frontend de cadastro React",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-008",
+        "FAC-014"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/customer-registry/web/src/features/users/`",
+      "acceptance": "Fluxos cadastro funcionam desktop/mobile, com acessibilidade básica.",
+      "validation": "Vitest + Playwright create/edit/list + axe smoke"
+    },
+    {
+      "id": "FAC-018",
+      "phase": "P02",
+      "title": "Cobrir API com testes de unidade e integração",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-015",
+        "FAC-016"
+      ],
+      "owner_role": "QA",
+      "paths": "apps/customer-registry/api/tests/{unit,integration}/`",
+      "acceptance": "Bug reproduzível possui teste e execução não depende de modelos LLM.",
+      "validation": "pytest -q apps/customer-registry/api/tests"
+    },
+    {
+      "id": "FAC-019",
+      "phase": "P02",
+      "title": "Cobrir UI com smoke E2E",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-017",
+        "FAC-018"
+      ],
+      "owner_role": "QA/Frontend",
+      "paths": "apps/customer-registry/web/e2e/`",
+      "acceptance": "E2E aprovado com dados sintéticos; artefatos por execução.",
+      "validation": "pnpm playwright test --reporter=line"
+    },
+    {
+      "id": "FAC-020",
+      "phase": "P02",
+      "title": "Documentar runbook e fixtures base",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-015",
+        "FAC-019"
+      ],
+      "owner_role": "Docs/QA",
+      "paths": "apps/customer-registry/README.md; tests/fixtures/`",
+      "acceptance": "Outro dev reproduz demo e fixtures sem credencial externa.",
+      "validation": "Follow README em checkout limpo; smoke do cadastro"
+    },
+    {
+      "id": "FAC-021",
+      "phase": "P03",
+      "title": "Implementar schema de demandas e revisões",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-011",
+        "FAC-020"
+      ],
+      "owner_role": "Database",
+      "paths": "packages/task-engine/src/task_engine/models.py; migrations/`",
+      "acceptance": "Mesmo evento/Issue não cria duas demandas e versão aprovada é imutável.",
+      "validation": "pytest tests/integration/test_demand_repository.py"
+    },
+    {
+      "id": "FAC-022",
+      "phase": "P03",
+      "title": "Implementar Task e dependency DAG",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-021"
+      ],
+      "owner_role": "Backend",
+      "paths": "packages/task-engine/src/task_engine/{tasks,dependencies}.py`",
+      "acceptance": "Tarefa bloqueada não é liberada e ciclos geram erro tipado.",
+      "validation": "pytest tests/unit/test_task_dag.py"
+    },
+    {
+      "id": "FAC-023",
+      "phase": "P03",
+      "title": "Implementar state machine determinística",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-022"
+      ],
+      "owner_role": "Backend",
+      "paths": "packages/task-engine/src/task_engine/transitions.py`",
+      "acceptance": "LLM não altera status diretamente; transição inválida gera erro estável.",
+      "validation": "pytest tests/unit/test_state_transitions.py"
+    },
+    {
+      "id": "FAC-024",
+      "phase": "P03",
+      "title": "Leases, fencing tokens e reserva atômica",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-022",
+        "FAC-023"
+      ],
+      "owner_role": "Backend/Database",
+      "paths": "packages/task-engine/src/task_engine/{leases,scheduler}.py`",
+      "acceptance": "Duas instâncias não executam mesma task simultaneamente.",
+      "validation": "pytest tests/integration/test_concurrent_claims.py"
+    },
+    {
+      "id": "FAC-025",
+      "phase": "P03",
+      "title": "Outbox transacional e idempotência de eventos",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-021",
+        "FAC-023"
+      ],
+      "owner_role": "Backend",
+      "paths": "packages/task-engine/src/task_engine/{outbox,inbox}.py`",
+      "acceptance": "Processamento at-least-once não vira efeitos duplicados no domínio.",
+      "validation": "pytest tests/integration/test_outbox_idempotency.py"
+    },
+    {
+      "id": "FAC-026",
+      "phase": "P03",
+      "title": "Audit trail, artifact registry e snapshots",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-021",
+        "FAC-023"
+      ],
+      "owner_role": "Platform",
+      "paths": "packages/task-engine/src/task_engine/audit.py; specs/demands/`",
+      "acceptance": "Toda task/run tem links a evidências, sem credenciais ou dumps de prompts.",
+      "validation": "pytest tests/unit/test_audit_artifacts.py"
+    },
+    {
+      "id": "FAC-027",
+      "phase": "P03",
+      "title": "Scheduler fake sem LLM para primeira simulação",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-024",
+        "FAC-025",
+        "FAC-026"
+      ],
+      "owner_role": "Backend/QA",
+      "paths": "workers/src/factory_workers/scheduler.py; tests/simulations/`",
+      "acceptance": "Vertical slice de estado percorre várias tasks sem chamar modelos.",
+      "validation": "pytest tests/simulations/test_vertical_slice_fake.py"
+    },
+    {
+      "id": "FAC-028",
+      "phase": "P04",
+      "title": "Criar APIs tipadas de demandas e tarefas",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-021",
+        "FAC-022",
+        "FAC-023",
+        "FAC-012"
+      ],
+      "owner_role": "Backend",
+      "paths": "apps/factory-api/src/factory_api/routers/{demands,tasks}.py`",
+      "acceptance": "OpenAPI descreve contratos reais e não executa shell.",
+      "validation": "pytest tests/integration/test_factory_demands_api.py"
+    },
+    {
+      "id": "FAC-029",
+      "phase": "P04",
+      "title": "Gerar client TypeScript de OpenAPI",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-028",
+        "FAC-008"
+      ],
+      "owner_role": "Frontend/Backend",
+      "paths": "apps/factory-web/src/lib/api/generated/; scripts/gen_client.py`",
+      "acceptance": "Alteração de contrato incompatível falha teste local.",
+      "validation": "python scripts/gen_client.py --check; pnpm typecheck"
+    },
+    {
+      "id": "FAC-030",
+      "phase": "P04",
+      "title": "Dashboard e Kanban local",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-028",
+        "FAC-029"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/factory-web/src/features/{dashboard,kanban}/`",
+      "acceptance": "Kanban retrata DB, não estado local imaginado pela UI.",
+      "validation": "Vitest + Playwright board smoke"
+    },
+    {
+      "id": "FAC-031",
+      "phase": "P04",
+      "title": "Detalhe da demanda e DAG navegável",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-030"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/factory-web/src/features/demands/`",
+      "acceptance": "Operador entende por que tarefa está bloqueada e qual gate falta.",
+      "validation": "Playwright demands detail test"
+    },
+    {
+      "id": "FAC-032",
+      "phase": "P04",
+      "title": "Implementar approval inbox e revisão humana",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-023",
+        "FAC-028",
+        "FAC-030"
+      ],
+      "owner_role": "Backend/Frontend",
+      "paths": "apps/factory-api/src/factory_api/routers/approvals.py; apps/factory-web/src/features/approvals/`",
+      "acceptance": "Nenhuma alteração de escopo/PR é autorizada só pela resposta do modelo.",
+      "validation": "pytest tests/security/test_human_approval.py; Playwright approval"
+    },
+    {
+      "id": "FAC-033",
+      "phase": "P04",
+      "title": "SSE confiável para logs e estados",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-028",
+        "FAC-030"
+      ],
+      "owner_role": "Backend/Frontend",
+      "paths": "apps/factory-api/src/factory_api/routers/events.py; apps/factory-web/src/hooks/useRunEvents.ts`",
+      "acceptance": "Cliente reconecta após queda sem perder eventos nem expor secrets.",
+      "validation": "pytest tests/integration/test_event_stream.py"
+    },
+    {
+      "id": "FAC-034",
+      "phase": "P04",
+      "title": "Testes E2E painel e acessibilidade",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-030",
+        "FAC-031",
+        "FAC-032",
+        "FAC-033"
+      ],
+      "owner_role": "QA",
+      "paths": "apps/factory-web/e2e/`",
+      "acceptance": "Smoke end-to-end UI passa com Fake Scheduler.",
+      "validation": "pnpm playwright test"
+    },
+    {
+      "id": "FAC-035",
+      "phase": "P05",
+      "title": "Normalizador de intake e deduplicação",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-021",
+        "FAC-028"
+      ],
+      "owner_role": "Backend",
+      "paths": "packages/integrations/src/integrations/intake.py`",
+      "acceptance": "Mensagem repetida atualiza evento sem duplicar demanda.",
+      "validation": "pytest tests/unit/test_intake_normalization.py"
+    },
+    {
+      "id": "FAC-036",
+      "phase": "P05",
+      "title": "Cliente GitHub read-only / PAT e App adapter",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-004",
+        "FAC-035"
+      ],
+      "owner_role": "Integrations",
+      "paths": "packages/integrations/src/integrations/github.py`",
+      "acceptance": "Nunca consulta repo externo por parâmetros arbitrários de Issue.",
+      "validation": "pytest tests/integration/test_github_client_mock.py"
+    },
+    {
+      "id": "FAC-037",
+      "phase": "P05",
+      "title": "Polling GitHub com cursores e reconciliação",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-035",
+        "FAC-036",
+        "FAC-025"
+      ],
+      "owner_role": "Integrations",
+      "paths": "workers/src/factory_workers/github_poll.py`",
+      "acceptance": "PC desligado não perde issues; reexecução não duplica.",
+      "validation": "pytest tests/integration/test_github_poll_recovery.py"
+    },
+    {
+      "id": "FAC-038",
+      "phase": "P05",
+      "title": "Discovery de demanda com evidências rastreáveis",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-035",
+        "FAC-026"
+      ],
+      "owner_role": "Analyst",
+      "paths": "packages/context-engine/src/context_engine/discovery.py; specs/demands/`",
+      "acceptance": "Nenhuma regra de negócio inventada vira aceitação sem confirmação.",
+      "validation": "pytest tests/fixtures/discovery/test_evidence_grounding.py"
+    },
+    {
+      "id": "FAC-039",
+      "phase": "P05",
+      "title": "Refinamento progressivo e versionamento",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-038",
+        "FAC-032"
+      ],
+      "owner_role": "Analyst/Planner",
+      "paths": "packages/task-engine/src/task_engine/refinement.py; specs/demands/*/requirements.md`",
+      "acceptance": "Spec aprovado é imutável; follow-up mantém history.",
+      "validation": "pytest tests/unit/test_requirement_revision.py"
+    },
+    {
+      "id": "FAC-040",
+      "phase": "P05",
+      "title": "Preparar Telegram long polling opcional",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-035",
+        "FAC-004"
+      ],
+      "owner_role": "Integrations",
+      "paths": "packages/integrations/src/integrations/telegram.py`",
+      "acceptance": "Integração habilitável por feature flag sem interferir no manual intake.",
+      "validation": "pytest tests/integration/test_telegram_poll_fake.py"
+    },
+    {
+      "id": "FAC-041",
+      "phase": "P06",
+      "title": "Manifests tipados das seis personas",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-038",
+        "FAC-039"
+      ],
+      "owner_role": "AI/Architect",
+      "paths": "agents/manifests/{analyst,planner,backend,frontend,qa,reviewer}.yaml`",
+      "acceptance": "Todo agente tem contrato, ferramentas permitidas e eval correspondente.",
+      "validation": "pytest tests/unit/test_agent_manifests.py"
+    },
+    {
+      "id": "FAC-042",
+      "phase": "P06",
+      "title": "Registry de skills local curado",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-041"
+      ],
+      "owner_role": "AI",
+      "paths": "agents/skills/registry.yaml; packages/context-engine/src/context_engine/skill_registry.py`",
+      "acceptance": "Registry determinístico, assinado/versionado por hash.",
+      "validation": "pytest tests/unit/test_skill_registry.py"
+    },
+    {
+      "id": "FAC-043",
+      "phase": "P06",
+      "title": "Router 0–2 skills por intenção",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-041",
+        "FAC-042"
+      ],
+      "owner_role": "AI",
+      "paths": "packages/context-engine/src/context_engine/router.py`",
+      "acceptance": "Pergunta trivial não carrega 30 schemas nem skills.",
+      "validation": "pytest tests/unit/test_skill_router.py"
+    },
+    {
+      "id": "FAC-044",
+      "phase": "P06",
+      "title": "Construir Context Pack progressive disclosure",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-038",
+        "FAC-041",
+        "FAC-043"
+      ],
+      "owner_role": "AI/Backend",
+      "paths": "packages/context-engine/src/context_engine/pack.py`",
+      "acceptance": "Pack reproduzível por hash com estimativa token e escopo correto.",
+      "validation": "pytest tests/unit/test_context_pack_budget.py"
+    },
+    {
+      "id": "FAC-045",
+      "phase": "P06",
+      "title": "Compactação e recuperação de tool output",
+      "status": "in_progress",
+      "depends_on": [
+        "FAC-044",
+        "FAC-006"
+      ],
+      "owner_role": "Platform",
+      "paths": "packages/context-engine/src/context_engine/compress.py`",
+      "acceptance": "Falha de 10K linhas vira 1 JSON e acesso seletivo auditado.",
+      "validation": "pytest tests/unit/test_log_compaction.py"
+    },
+    {
+      "id": "FAC-046",
+      "phase": "P06",
+      "title": "Evals de contexto, hallucination e segurança",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-043",
+        "FAC-044",
+        "FAC-045"
+      ],
+      "owner_role": "QA/AI",
+      "paths": "evals/fixtures/context/; tests/security/`",
+      "acceptance": "Mudanças no router precisam superar baseline ou são rejeitadas.",
+      "validation": "pytest tests/fixtures/context; python scripts/validate_checks.py"
+    },
+    {
+      "id": "FAC-047",
+      "phase": "P07",
+      "title": "Fixar e executar OpenBot upstream local",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-005",
+        "FAC-041"
+      ],
+      "owner_role": "AI/Platform",
+      "paths": "infra/compose/openbot.yml; docs/spikes/openbot.md`",
+      "acceptance": "Versão e endpoints reais testados; run_shell inseguro desativado.",
+      "validation": "python scripts/validate_env.py --mode live --require openbot; contrato smoke"
+    },
+    {
+      "id": "FAC-048",
+      "phase": "P07",
+      "title": "Implementar OpenBot Adapter substituível",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-047",
+        "FAC-028"
+      ],
+      "owner_role": "Backend/AI",
+      "paths": "packages/agent-runtime/src/agent_runtime/openbot_adapter.py`",
+      "acceptance": "API interna não depende de payloads específicos upstream.",
+      "validation": "pytest tests/contracts/test_openbot_adapter.py"
+    },
+    {
+      "id": "FAC-049",
+      "phase": "P07",
+      "title": "Vincular conversa a Issue/card e snapshots",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-048",
+        "FAC-038"
+      ],
+      "owner_role": "Backend",
+      "paths": "packages/context-engine/src/context_engine/binding.py`",
+      "acceptance": "Dois cards na mesma persona nunca misturam requisitos ou dados.",
+      "validation": "pytest tests/integration/test_thread_bindings.py"
+    },
+    {
+      "id": "FAC-050",
+      "phase": "P07",
+      "title": "Roteamento de intenção em conversas",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-048",
+        "FAC-049",
+        "FAC-043"
+      ],
+      "owner_role": "AI",
+      "paths": "packages/agent-runtime/src/agent_runtime/intent_router.py`",
+      "acceptance": "Pergunta sobre teste não dispara build nem cria branch.",
+      "validation": "pytest tests/unit/test_chat_intent_routing.py"
+    },
+    {
+      "id": "FAC-051",
+      "phase": "P07",
+      "title": "Tool Gateway de leitura e propostas",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-049",
+        "FAC-050",
+        "FAC-032"
+      ],
+      "owner_role": "Security/Backend",
+      "paths": "packages/agent-runtime/src/agent_runtime/tool_gateway.py`",
+      "acceptance": "OpenBot não tem caminho direto para ler .env ou escrever repo.",
+      "validation": "pytest tests/security/test_tool_gateway_denied.py"
+    },
+    {
+      "id": "FAC-052",
+      "phase": "P07",
+      "title": "Chat de agentes no React por contexto",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-031",
+        "FAC-048",
+        "FAC-049"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/factory-web/src/features/agents-chat/`",
+      "acceptance": "Operador conversa com @qa no card e acompanha TaskProposal.",
+      "validation": "Playwright tests/e2e/test_direct_agent_chat.py"
+    },
+    {
+      "id": "FAC-053",
+      "phase": "P07",
+      "title": "Limites de loops e contratos agente-agente",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-048",
+        "FAC-051"
+      ],
+      "owner_role": "QA/AI",
+      "paths": "tests/agents/test_collaboration_limits.py; agents/policies/`",
+      "acceptance": "Nenhuma conversa entra em loop ou executa alteração por menção isolada.",
+      "validation": "pytest tests/agents/test_collaboration_limits.py"
+    },
+    {
+      "id": "FAC-054",
+      "phase": "P08",
+      "title": "Fixar LangGraph e checkpointer durável",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-005",
+        "FAC-024"
+      ],
+      "owner_role": "AI/Platform",
+      "paths": "packages/agent-runtime/src/agent_runtime/langgraph_adapter.py; docs/spikes/langgraph.md`",
+      "acceptance": "Não usar MemorySaver em processo para persistência pós-restart.",
+      "validation": "pytest tests/integration/test_langgraph_durable_restart.py"
+    },
+    {
+      "id": "FAC-055",
+      "phase": "P08",
+      "title": "Criar grafo padrão de task",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-054",
+        "FAC-023"
+      ],
+      "owner_role": "AI/Backend",
+      "paths": "packages/agent-runtime/src/agent_runtime/workflows/task_graph.py`",
+      "acceptance": "Grafo nunca marca done após check com exit 1 ou 2.",
+      "validation": "pytest tests/unit/test_graph_transitions.py"
+    },
+    {
+      "id": "FAC-056",
+      "phase": "P08",
+      "title": "Implementar TaskProposal -> task -> subworkflow",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-050",
+        "FAC-055",
+        "FAC-025"
+      ],
+      "owner_role": "Backend",
+      "paths": "packages/agent-runtime/src/agent_runtime/workflows/proposal_graph.py`",
+      "acceptance": "ISSUE concluída recebe follow-up QA sem recomeçar discovery inteiro.",
+      "validation": "pytest tests/integration/test_proposal_subworkflow.py"
+    },
+    {
+      "id": "FAC-057",
+      "phase": "P08",
+      "title": "Implementar nó de pausa HITL e resume",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-032",
+        "FAC-054",
+        "FAC-055"
+      ],
+      "owner_role": "Backend/Security",
+      "paths": "packages/agent-runtime/src/agent_runtime/workflows/hitl.py`",
+      "acceptance": "Humano continua sendo autoridade e restart mantém pause.",
+      "validation": "pytest tests/integration/test_human_interrupt_resume.py"
+    },
+    {
+      "id": "FAC-058",
+      "phase": "P08",
+      "title": "Retries, DLQ e reconciliação periódica",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-024",
+        "FAC-025",
+        "FAC-055"
+      ],
+      "owner_role": "Platform",
+      "paths": "workers/src/factory_workers/{reconciler,retries}.py`",
+      "acceptance": "Falha Ollama causa fila/retry, não repetição de commit/PR.",
+      "validation": "pytest tests/integration/test_recovery_idempotency.py"
+    },
+    {
+      "id": "FAC-059",
+      "phase": "P08",
+      "title": "Scheduler concorrente com limite GPU",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-024",
+        "FAC-055"
+      ],
+      "owner_role": "Platform/AI",
+      "paths": "packages/task-engine/src/task_engine/scheduler.py; packages/agent-runtime/src/agent_runtime/llm_queue.py`",
+      "acceptance": "Duas tasks paralelas não obrigam duas inferências simultâneas em 8GB VRAM.",
+      "validation": "pytest tests/integration/test_scheduler_concurrency.py"
+    },
+    {
+      "id": "FAC-060",
+      "phase": "P08",
+      "title": "Testar graph runner com fake model/tools",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-055",
+        "FAC-056",
+        "FAC-057",
+        "FAC-058",
+        "FAC-059"
+      ],
+      "owner_role": "QA",
+      "paths": "tests/workflows/fixtures/`",
+      "acceptance": "Workflow passa sem network, Ollama e nenhum cloud token.",
+      "validation": "pytest tests/workflows -q"
+    },
+    {
+      "id": "FAC-061",
+      "phase": "P09",
+      "title": "Criar worktree seguro por run",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-020",
+        "FAC-024"
+      ],
+      "owner_role": "Platform",
+      "paths": "packages/agent-runtime/src/agent_runtime/worktrees.py`",
+      "acceptance": "Sem worktree compartilhado nem edição direta de main.",
+      "validation": "pytest tests/integration/test_worktree_lifecycle.py"
+    },
+    {
+      "id": "FAC-062",
+      "phase": "P09",
+      "title": "Sandbox com perfis de CPU/RAM/rede/FS",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-061",
+        "FAC-051"
+      ],
+      "owner_role": "Security/Platform",
+      "paths": "infra/compose/runner.yml; packages/agent-runtime/src/agent_runtime/sandbox.py`",
+      "acceptance": "Tentativa de ler .env/host path falha sem vazar dados.",
+      "validation": "pytest tests/security/test_sandbox_escape_guards.py"
+    },
+    {
+      "id": "FAC-063",
+      "phase": "P09",
+      "title": "Implementer com patch validado",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-062",
+        "FAC-044",
+        "FAC-055"
+      ],
+      "owner_role": "Backend/AI",
+      "paths": "packages/agent-runtime/src/agent_runtime/implementer.py`",
+      "acceptance": "Patch só altera arquivos permitidos e é reproduzível no SHA base.",
+      "validation": "pytest tests/integration/test_patch_apply_scopes.py"
+    },
+    {
+      "id": "FAC-064",
+      "phase": "P09",
+      "title": "Executar checks por tarefa em sandbox",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-063",
+        "FAC-055"
+      ],
+      "owner_role": "QA/Platform",
+      "paths": "packages/quality-gates/src/quality_gates/runner.py`",
+      "acceptance": "Gates falhos impedem avanço, erro 2 não é tratado como bug de código.",
+      "validation": "pytest tests/unit/test_gate_runner.py"
+    },
+    {
+      "id": "FAC-065",
+      "phase": "P09",
+      "title": "Integrar branches sem conflito e retestar",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-061",
+        "FAC-063",
+        "FAC-064"
+      ],
+      "owner_role": "Platform",
+      "paths": "packages/agent-runtime/src/agent_runtime/integration.py`",
+      "acceptance": "Merge de tasks paralelas não passa sem tests/regressão.",
+      "validation": "pytest tests/integration/test_parallel_patch_integration.py"
+    },
+    {
+      "id": "FAC-066",
+      "phase": "P09",
+      "title": "Reviewer independente com evidências",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-065",
+        "FAC-064"
+      ],
+      "owner_role": "Reviewer",
+      "paths": "agents/manifests/reviewer.yaml; packages/eval-engine/src/eval_engine/review.py`",
+      "acceptance": "Reviewer tem prompt/modelo e rubric próprios e pode reprovar task.",
+      "validation": "pytest evals/fixtures/reviewer/"
+    },
+    {
+      "id": "FAC-067",
+      "phase": "P09",
+      "title": "Preparar publicação GitHub opcional por HITL",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-036",
+        "FAC-032",
+        "FAC-065",
+        "FAC-066"
+      ],
+      "owner_role": "Integrations",
+      "paths": "packages/integrations/src/integrations/github_publisher.py`",
+      "acceptance": "Sem autorização nenhum push remoto ocorre; PR inclui evidências redigidas.",
+      "validation": "pytest tests/contracts/test_github_publish_fake.py"
+    },
+    {
+      "id": "FAC-068",
+      "phase": "P10",
+      "title": "Criar contrato único de validação JSON",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-006",
+        "FAC-064"
+      ],
+      "owner_role": "QA/Platform",
+      "paths": "packages/quality-gates/src/quality_gates/schema.py; scripts/validate_checks.py`",
+      "acceptance": "Runner consome uma linha JSON e não precisa parsear log livre.",
+      "validation": "pytest tests/unit/test_quality_contract.py"
+    },
+    {
+      "id": "FAC-069",
+      "phase": "P10",
+      "title": "Lint, typecheck e unit tests Python",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-068",
+        "FAC-015"
+      ],
+      "owner_role": "QA",
+      "paths": "scripts/quality_python.py; pyproject.toml`",
+      "acceptance": "Mudanças Python não avançam com lint/typecheck/unit vermelhos.",
+      "validation": "python scripts/quality_python.py --json"
+    },
+    {
+      "id": "FAC-070",
+      "phase": "P10",
+      "title": "Testes React, TypeScript e build",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-068",
+        "FAC-017"
+      ],
+      "owner_role": "Frontend/QA",
+      "paths": "scripts/quality_web.py; apps/*/web/package.json`",
+      "acceptance": "Frontend passa sem erros de tipagem e build com config real.",
+      "validation": "python scripts/quality_web.py --json"
+    },
+    {
+      "id": "FAC-071",
+      "phase": "P10",
+      "title": "Integração e E2E Playwright local",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-018",
+        "FAC-019",
+        "FAC-064"
+      ],
+      "owner_role": "QA",
+      "paths": "tests/e2e/; infra/compose/base.yml`",
+      "acceptance": "Smoke local reproduzível sem GitHub Actions/LLM real.",
+      "validation": "python scripts/quality_e2e.py --json"
+    },
+    {
+      "id": "FAC-072",
+      "phase": "P10",
+      "title": "Scanners locais de segurança e dependências",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-068",
+        "FAC-069",
+        "FAC-070"
+      ],
+      "owner_role": "Security",
+      "paths": "scripts/quality_security.py; agents/policies/`",
+      "acceptance": "Critical/high conforme policy bloqueia; suppressions não são adicionadas pelo agente.",
+      "validation": "python scripts/quality_security.py --json"
+    },
+    {
+      "id": "FAC-073",
+      "phase": "P10",
+      "title": "Quality aggregate e summaries para agentes",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-068",
+        "FAC-069",
+        "FAC-070",
+        "FAC-071",
+        "FAC-072"
+      ],
+      "owner_role": "QA/Platform",
+      "paths": "packages/quality-gates/src/quality_gates/aggregate.py`",
+      "acceptance": "Nenhum score LLM sobrepõe gate determinístico vermelho.",
+      "validation": "pytest tests/unit/test_gate_aggregation.py"
+    },
+    {
+      "id": "FAC-074",
+      "phase": "P10",
+      "title": "Perf/DAST e Sonar local opcionais",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-073"
+      ],
+      "owner_role": "QA/Security",
+      "paths": "infra/compose/quality.yml; scripts/quality_extended.py`",
+      "acceptance": "Perfil extendido roda quando habilitado, com métricas e sem dependência cloud.",
+      "validation": "quality_extended.py --json em perfil de teste"
+    },
+    {
+      "id": "FAC-075",
+      "phase": "P11",
+      "title": "Definir eval schema e métricas por perfil",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-041",
+        "FAC-073"
+      ],
+      "owner_role": "AI/QA",
+      "paths": "packages/eval-engine/src/eval_engine/{schema,metrics}.py; evals/rubrics/`",
+      "acceptance": "Scorecards não atribuem nota subjetiva onde há teste determinístico.",
+      "validation": "pytest tests/unit/test_eval_metrics.py"
+    },
+    {
+      "id": "FAC-076",
+      "phase": "P11",
+      "title": "Datasets de casos dev/regression/holdout",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-075",
+        "FAC-020"
+      ],
+      "owner_role": "QA",
+      "paths": "evals/{fixtures,regression,holdout}/`",
+      "acceptance": "Casos têm gabarito e não são usados em prompt de produção.",
+      "validation": "pytest evals/fixtures; audit dataset hashes"
+    },
+    {
+      "id": "FAC-077",
+      "phase": "P11",
+      "title": "LLM-as-a-Judge com schema e calibração",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-075",
+        "FAC-076",
+        "FAC-044"
+      ],
+      "owner_role": "AI",
+      "paths": "packages/eval-engine/src/eval_engine/judge.py; evals/rubrics/`",
+      "acceptance": "Juiz não julga a própria resposta e jamais muda approval/gate automaticamente.",
+      "validation": "pytest tests/ai/test_judge_schema.py + benchmark calibração"
+    },
+    {
+      "id": "FAC-078",
+      "phase": "P11",
+      "title": "Feedback humano estruturado em runs",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-032",
+        "FAC-075"
+      ],
+      "owner_role": "Backend/Frontend",
+      "paths": "packages/eval-engine/src/eval_engine/feedback.py; apps/factory-web/src/features/evals/`",
+      "acceptance": "Feedback não pode ser falsificado por agente avaliado.",
+      "validation": "pytest tests/security/test_eval_feedback_permissions.py"
+    },
+    {
+      "id": "FAC-079",
+      "phase": "P11",
+      "title": "Experimento de prompts baseline/candidato",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-076",
+        "FAC-077",
+        "FAC-078"
+      ],
+      "owner_role": "AI",
+      "paths": "packages/eval-engine/src/eval_engine/experiments.py; agents/prompts/`",
+      "acceptance": "Sem evidência de melhora não há promoção de prompt.",
+      "validation": "pytest tests/ai/test_prompt_experiments.py"
+    },
+    {
+      "id": "FAC-080",
+      "phase": "P11",
+      "title": "HITL para promoção e rollback de prompts",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-079",
+        "FAC-032"
+      ],
+      "owner_role": "Security/Frontend",
+      "paths": "apps/factory-web/src/features/evals/experiments/; agents/prompts/`",
+      "acceptance": "Prompt candidato só vira ativo após aprovação explícita.",
+      "validation": "pytest tests/integration/test_prompt_promotion_hitl.py"
+    },
+    {
+      "id": "FAC-081",
+      "phase": "P12",
+      "title": "Correlation IDs, logs e masking em todo serviço",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-026",
+        "FAC-055",
+        "FAC-073"
+      ],
+      "owner_role": "Platform",
+      "paths": "packages/observability/src/observability/{logging,redaction}.py`",
+      "acceptance": "Logs não contêm tokens, e uma task pode ser traçada ponta a ponta.",
+      "validation": "pytest tests/security/test_log_redaction.py"
+    },
+    {
+      "id": "FAC-082",
+      "phase": "P12",
+      "title": "Instrumentação Ollama de tokens e latência",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-081",
+        "FAC-044"
+      ],
+      "owner_role": "AI/Platform",
+      "paths": "packages/observability/src/observability/ollama_metrics.py`",
+      "acceptance": "Dashboard diferencia tempo de espera, carregamento e geração.",
+      "validation": "pytest tests/unit/test_ollama_metrics.py"
+    },
+    {
+      "id": "FAC-083",
+      "phase": "P12",
+      "title": "Coleta local NVIDIA/VRAM/energia",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-082"
+      ],
+      "owner_role": "Platform",
+      "paths": "scripts/hardware_probe.py; packages/observability/src/observability/gpu.py`",
+      "acceptance": "Observabilidade não bloqueia pipeline por falha de métrica.",
+      "validation": "pytest tests/unit/test_gpu_probe_fake.py"
+    },
+    {
+      "id": "FAC-084",
+      "phase": "P12",
+      "title": "Tracing OpenTelemetry e bridges OpenBot/LangGraph",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-081",
+        "FAC-082",
+        "FAC-055",
+        "FAC-048"
+      ],
+      "owner_role": "Platform",
+      "paths": "packages/observability/src/observability/tracing.py`",
+      "acceptance": "Traces correlacionam workflow e chamada de modelo sem dados secretos.",
+      "validation": "pytest tests/integration/test_trace_correlation.py"
+    },
+    {
+      "id": "FAC-085",
+      "phase": "P12",
+      "title": "Arize Phoenix self-hosted opcional",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-084"
+      ],
+      "owner_role": "Platform",
+      "paths": "infra/compose/observability.yml; docs/observability-runbook.md`",
+      "acceptance": "Desligar Phoenix não interfere em criação/teste/entrega.",
+      "validation": "docker compose --profile observability config; smoke com collector off"
+    },
+    {
+      "id": "FAC-086",
+      "phase": "P12",
+      "title": "Dashboard de métricas e custo-benefício",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-031",
+        "FAC-075",
+        "FAC-082",
+        "FAC-083"
+      ],
+      "owner_role": "Frontend",
+      "paths": "apps/factory-web/src/features/observability/`",
+      "acceptance": "Dash separa valores medidos de estimativas e filtros por tarefa.",
+      "validation": "Vitest + Playwright dashboard smoke"
+    },
+    {
+      "id": "FAC-087",
+      "phase": "P13",
+      "title": "Demo 1: Issue bug CPF com reprodução",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-037",
+        "FAC-039",
+        "FAC-060",
+        "FAC-074"
+      ],
+      "owner_role": "QA/Analyst",
+      "paths": "evals/fixtures/bug-cpf/; specs/demands/demo-cpf/`",
+      "acceptance": "Bug repro antes, teste passa após fix e nenhuma mudança fora do escopo.",
+      "validation": "pytest tests/acceptance/test_bug_cpf_flow.py"
+    },
+    {
+      "id": "FAC-088",
+      "phase": "P13",
+      "title": "Demo 2: telefone fullstack e tarefas paralelas",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-067",
+        "FAC-066",
+        "FAC-060",
+        "FAC-074"
+      ],
+      "owner_role": "Backend/Frontend",
+      "paths": "evals/fixtures/feature-phone/; specs/demands/demo-phone/`",
+      "acceptance": "Campo funciona em API+UI e auditoria registra dependências.",
+      "validation": "pytest tests/acceptance/test_phone_feature.py"
+    },
+    {
+      "id": "FAC-089",
+      "phase": "P13",
+      "title": "Demo 3: conversa direta QA pós-conclusão",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-052",
+        "FAC-057",
+        "FAC-088"
+      ],
+      "owner_role": "QA/AI",
+      "paths": "evals/fixtures/followup-qa/; tests/acceptance/`",
+      "acceptance": "Demanda original mantém histórico e não reexecuta todo discovery.",
+      "validation": "pytest tests/acceptance/test_qa_direct_followup.py"
+    },
+    {
+      "id": "FAC-090",
+      "phase": "P13",
+      "title": "Demo 4: dependência vulnerável/upgrade",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-072",
+        "FAC-060"
+      ],
+      "owner_role": "Security",
+      "paths": "evals/fixtures/dependency-update/; tests/acceptance/`",
+      "acceptance": "Remediação tem evidência objetiva e humano aprova publicação.",
+      "validation": "pytest tests/acceptance/test_security_fix_flow.py"
+    },
+    {
+      "id": "FAC-091",
+      "phase": "P13",
+      "title": "Demo 5: restart, retries, duplicate events",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-059",
+        "FAC-060",
+        "FAC-025"
+      ],
+      "owner_role": "Platform/QA",
+      "paths": "tests/acceptance/test_restart_recovery.py`",
+      "acceptance": "A execução retoma corretamente e preserva audit trail.",
+      "validation": "pytest tests/acceptance/test_restart_recovery.py"
+    },
+    {
+      "id": "FAC-092",
+      "phase": "P13",
+      "title": "Red-team e simulações de uso indevido",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-062",
+        "FAC-051",
+        "FAC-080"
+      ],
+      "owner_role": "Security",
+      "paths": "tests/security/prompt_injection/`",
+      "acceptance": "Nenhum prompt override atravessa Tool Gateway/policies.",
+      "validation": "pytest tests/security -q"
+    },
+    {
+      "id": "FAC-093",
+      "phase": "P13",
+      "title": "Aceite humano independente e scorecard final",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-088",
+        "FAC-089",
+        "FAC-090",
+        "FAC-091",
+        "FAC-092"
+      ],
+      "owner_role": "Reviewer/Human",
+      "paths": "docs/acceptance-report.md; .runtime/artifacts/uat/`",
+      "acceptance": "Relatório não diz done se requisito/gate não foi verificado.",
+      "validation": "Checklist UAT assinado pelo operador"
+    },
+    {
+      "id": "FAC-094",
+      "phase": "P14",
+      "title": "GitHub Projects v2 como espelho Kanban",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-036",
+        "FAC-037",
+        "FAC-093"
+      ],
+      "owner_role": "Integrations",
+      "paths": "packages/integrations/src/integrations/github_projects.py`",
+      "acceptance": "Problema de Projects não impede Task Engine local.",
+      "validation": "pytest tests/contracts/test_projects_sync_fake.py"
+    },
+    {
+      "id": "FAC-095",
+      "phase": "P14",
+      "title": "Jira Cloud polling opt-in",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-035",
+        "FAC-037",
+        "FAC-094"
+      ],
+      "owner_role": "Integrations",
+      "paths": "packages/integrations/src/integrations/jira.py`",
+      "acceptance": "Jira desligado não requer credencial nem interfere nos demais canais.",
+      "validation": "pytest tests/contracts/test_jira_poll_fake.py"
+    },
+    {
+      "id": "FAC-096",
+      "phase": "P14",
+      "title": "Webhook com túnel apenas se requerido",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-036",
+        "FAC-037",
+        "FAC-094",
+        "FAC-095"
+      ],
+      "owner_role": "Security/Integrations",
+      "paths": "apps/factory-api/src/factory_api/routers/webhooks.py`",
+      "acceptance": "Túnel não expõe admin UI/Ollama e payload inválido é rejeitado.",
+      "validation": "pytest tests/security/test_webhook_signatures.py"
+    },
+    {
+      "id": "FAC-097",
+      "phase": "P14",
+      "title": "Executar atualização local automática de dependências com policy",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-072",
+        "FAC-091"
+      ],
+      "owner_role": "Security/QA",
+      "paths": "workers/src/factory_workers/dependency_audit.py`",
+      "acceptance": "Scanner pode propor, mas não atualizar automaticamente por ação perigosa.",
+      "validation": "pytest tests/integration/test_dependency_audit.py"
+    },
+    {
+      "id": "FAC-098",
+      "phase": "P14",
+      "title": "Backups, retenção e recuperação de ambiente local",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-094",
+        "FAC-081"
+      ],
+      "owner_role": "SRE",
+      "paths": "scripts/{backup,restore,dry_run_restore}.py; docs/backup-runbook.md`",
+      "acceptance": "Recuperação testada, não apenas script de backup não verificado.",
+      "validation": "restore dry-run + integrity hash + smoke"
+    },
+    {
+      "id": "FAC-099",
+      "phase": "P14",
+      "title": "Preparar roadmap CI/deploy sem habilitar",
+      "status": "not_started",
+      "depends_on": [
+        "FAC-094"
+      ],
+      "owner_role": "Architect",
+      "paths": "docs/roadmap-futuro.md`",
+      "acceptance": "Nenhum GitHub Secret, YAML CI obrigatório ou dependência de VPS aparece no caminho crítico.",
+      "validation": "Inspeção git diff .github/workflows + checklist"
+    }
+  ]
+}

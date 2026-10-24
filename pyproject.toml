@@ -1,0 +1,41 @@
+[project]
+name = "agentic-factory-local"
+version = "0.1.0"
+description = "Local-first Agentic Factory workspace"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.16.0",
+    "pytest>=8.3,<9",
+    "ruff>=0.11,<1",
+]
+api = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "pydantic[email]>=2.8,<3", "sqlalchemy>=2.0,<3", "alembic>=1.14,<2", "psycopg[binary]>=3.2,<4", "redis>=5,<7"]
+
+[tool.uv.workspace]
+members = [
+  "apps/factory-api",
+  "packages/shared-contracts",
+  "packages/task-engine",
+  "packages/context-engine",
+  "packages/integrations",
+  "workers",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "apps/factory-api/src",
+  "packages/shared-contracts/src",
+  "packages/task-engine/src",
+  "apps/customer-registry/api/src",
+]
+testpaths = ["apps", "packages", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["specs/**", "validate_env/**"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

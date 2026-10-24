@@ -1,0 +1,1 @@
+{"id":"backend","goal":"Implement backend changes within task scope","scope":["authorized backend paths"],"tools":["read_file","propose_patch","run_allowed_checks"],"forbidden":["read secrets","publish changes","expand scope"],"escalation":["scope conflict","secret required"],"rubric_id":"backend-v1","max_tool_calls":12,"max_context_tokens":8000}

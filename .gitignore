@@ -1,0 +1,27 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python tooling and environments
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime data and isolated work
+.runtime/
+worktrees/
+
+# Frontend dependencies/build output
+node_modules/
+dist/
+coverage/
+
+# Local databases and logs
+*.sqlite3
+*.log
