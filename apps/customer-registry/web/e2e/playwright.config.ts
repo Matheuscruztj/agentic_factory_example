@@ -12,11 +12,12 @@ export default defineConfig({
   fullyParallel: false,
   reporter: 'line',
   use: {
-    baseURL: 'http://127.0.0.1:5174',
-    trace: 'retain-on-failure',
+    baseURL: process.env.REGISTRY_TEST_WEB_URL ?? 'http://127.0.0.1:5174',
+    trace: process.env.REGISTRY_TEST_EXTERNAL_SERVER === 'true' ? 'off' : 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
-  webServer: [
+  outputDir: process.env.REGISTRY_TEST_OUTPUT_DIR ?? 'test-results',
+  webServer: process.env.REGISTRY_TEST_EXTERNAL_SERVER === 'true' ? undefined : [
     {
       command: 'uv run uvicorn customer_registry.main:app --app-dir apps/customer-registry/api/src --host 127.0.0.1 --port 8010',
       cwd: root,

@@ -3,10 +3,14 @@ export type User = {
   username: string
   name: string
   email: string
+  phone: string | null
   status: 'active' | 'inactive'
   created_at: string
   updated_at: string
+  tags: Tag[]
 }
+
+export type Tag = { id: string; name: string }
 
 const API_URL = import.meta.env.VITE_REGISTRY_API_URL ?? 'http://127.0.0.1:8010'
 
@@ -26,12 +30,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const usersApi = {
-  list: (search: string) => request<User[]>(`/api/v1/users?search=${encodeURIComponent(search)}`),
-  create: (username: string, name: string, email: string) => request<User>('/api/v1/users', {
-    method: 'POST', body: JSON.stringify({ username, name, email }),
+  list: (search: string, tagId = '') => request<User[]>(`/api/v1/users?search=${encodeURIComponent(search)}${tagId ? `&tag_id=${encodeURIComponent(tagId)}` : ''}`),
+  listTags: () => request<Tag[]>('/api/v1/tags'),
+  createTag: (name: string) => request<Tag>('/api/v1/tags', { method: 'POST', body: JSON.stringify({ name }) }),
+  create: (username: string, name: string, email: string, phone = '', tag_ids: string[] = []) => request<User>('/api/v1/users', {
+    method: 'POST', body: JSON.stringify({ username, name, email, phone: phone || null, tag_ids }),
   }),
-  update: (id: string, username: string, name: string, email: string) => request<User>(`/api/v1/users/${id}`, {
-    method: 'PATCH', body: JSON.stringify({ username, name, email }),
+  update: (id: string, username: string, name: string, email: string, phone = '', tag_ids: string[] = []) => request<User>(`/api/v1/users/${id}`, {
+    method: 'PATCH', body: JSON.stringify({ username, name, email, phone: phone || null, tag_ids }),
   }),
   deactivate: (id: string) => request<void>(`/api/v1/users/${id}`, { method: 'DELETE' }),
 }

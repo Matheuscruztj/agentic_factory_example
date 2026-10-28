@@ -12,4 +12,9 @@ The local monorepo needs a small real application that can safely demonstrate fu
 - Test fixtures contain only synthetic identities.
 
 ## Out of scope
-CPF, telephone, multi-tenant access, remote hosting, hard delete, and production personal data.
+CPF, multi-tenant access, remote hosting, hard delete, and production personal data.
+
+## Demo extension (FAC-088)
+An optional synthetic phone number is supported in the API and UI. It is validated,
+searchable, editable, and omitted when blank. CPF remains out of scope and is not
+persisted by the registry.

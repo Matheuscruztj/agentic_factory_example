@@ -1,7 +1,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
-import { usersApi, type User } from './api'
+import { usersApi, type Tag, type User } from './api'
 
-const initialForm = { username: '', name: '', email: '' }
+const initialForm = { username: '', name: '', email: '', phone: '' }
 
 function explainError(error: unknown): string {
   if (!(error instanceof Error)) return 'Ocorreu um erro inesperado.'
@@ -14,6 +14,10 @@ function explainError(error: unknown): string {
 export function App() {
   const [users, setUsers] = useState<User[]>([])
   const [search, setSearch] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
+  const [tags, setTags] = useState<Tag[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [newTag, setNewTag] = useState('')
   const [form, setForm] = useState(initialForm)
   const [editing, setEditing] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -24,14 +28,19 @@ export function App() {
   const loadUsers = useCallback(async (term: string) => {
     setLoading(true)
     try {
-      setUsers(await usersApi.list(term))
-      setError('')
+      setUsers(await usersApi.list(term, tagFilter))
     } catch (reason) {
       setError(explainError(reason))
     } finally {
       setLoading(false)
     }
+  }, [tagFilter])
+
+  const loadTags = useCallback(async () => {
+    try { setTags(await usersApi.listTags()) } catch (reason) { setError(explainError(reason)) }
   }, [])
+
+  useEffect(() => { const timer = window.setTimeout(() => void loadTags(), 0); return () => window.clearTimeout(timer) }, [loadTags])
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadUsers(search), 180)
@@ -44,7 +53,8 @@ export function App() {
 
   function beginEdit(user: User) {
     setEditing(user)
-    setForm({ username: user.username, name: user.name, email: user.email })
+    setForm({ username: user.username, name: user.name, email: user.email, phone: user.phone ?? '' })
+    setSelectedTags(user.tags.map((tag) => tag.id))
     setNotice('')
     document.getElementById('name')?.focus()
   }
@@ -52,6 +62,7 @@ export function App() {
   function resetForm() {
     setEditing(null)
     setForm(initialForm)
+    setSelectedTags([])
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -61,10 +72,10 @@ export function App() {
     setNotice('')
     try {
       if (editing) {
-        await usersApi.update(editing.id, form.username.trim(), form.name.trim(), form.email.trim())
+        await usersApi.update(editing.id, form.username.trim(), form.name.trim(), form.email.trim(), form.phone.trim(), selectedTags)
         setNotice('Cadastro atualizado.')
       } else {
-        await usersApi.create(form.username.trim(), form.name.trim(), form.email.trim())
+        await usersApi.create(form.username.trim(), form.name.trim(), form.email.trim(), form.phone.trim(), selectedTags)
         setNotice('Cliente cadastrado.')
       }
       resetForm()
@@ -74,6 +85,19 @@ export function App() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function createTag() {
+    setError('')
+    setNotice('')
+    try {
+      const tag = await usersApi.createTag(newTag)
+      setTags((current) => [...current, tag])
+      setSelectedTags((current) => [...current, tag.id])
+      setNewTag('')
+      setNotice(`Etiqueta “${tag.name}” criada.`)
+      setError('')
+    } catch (reason) { setError(explainError(reason)) }
   }
 
   async function deactivate(user: User) {
@@ -109,7 +133,7 @@ export function App() {
       <section className="workspace" aria-label="Gerenciamento de clientes">
         <div className="workspace-heading">
           <div><span className="section-kicker">VISÃO GERAL</span><h2>Seus clientes <span className="count-pill">{activeCount.toString().padStart(2, '0')}</span></h2></div>
-          <label className="search-box"><span aria-hidden="true">⌕</span><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por nome ou e-mail" aria-label="Buscar clientes" /></label>
+          <div className="filters"><label className="search-box"><span aria-hidden="true">⌕</span><input value={search} onChange={(event) => { setError(''); setSearch(event.target.value) }} placeholder="Buscar por nome ou e-mail" aria-label="Buscar clientes" /></label><label className="tag-filter">Etiqueta<select aria-label="Filtrar por etiqueta" value={tagFilter} onChange={(event) => { setError(''); setTagFilter(event.target.value) }}><option value="">Todas</option>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select></label></div>
         </div>
 
         <div className="content-grid">
@@ -121,7 +145,7 @@ export function App() {
             ) : null}
             {!loading && users.map((user, index) => (
               <article className="user-row" key={user.id}>
-                <div className="person-cell"><div className={`avatar avatar-${index % 4}`}>{initials(user.name)}</div><div className="person-copy"><strong>{user.name}</strong><span>{user.email}</span></div></div>
+                <div className="person-cell"><div className={`avatar avatar-${index % 4}`}>{initials(user.name)}</div><div className="person-copy"><strong>{user.name}</strong><span>{user.email}</span>{user.phone ? <span>{user.phone}</span> : null}<span className="tag-chips">{user.tags.map((tag) => <span key={tag.id}>{tag.name}</span>)}</span></div></div>
                 <time dateTime={user.created_at}>{formatter.format(new Date(user.created_at))}</time>
                 <div className="row-actions"><button className="text-action" onClick={() => beginEdit(user)}>Editar</button><button className="icon-action" aria-label={`Desativar ${user.name}`} title="Desativar cadastro" onClick={() => void deactivate(user)}>×</button></div>
               </article>
@@ -138,6 +162,11 @@ export function App() {
               <input id="name" name="name" autoComplete="name" maxLength={120} required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ex.: Marina Costa" />
               <label htmlFor="email">E-MAIL</label>
               <input id="email" name="email" type="email" autoComplete="email" maxLength={254} required value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} placeholder="marina@exemplo.com" />
+              <label htmlFor="phone">TELEFONE (OPCIONAL)</label>
+              <input id="phone" name="phone" type="tel" autoComplete="tel" minLength={7} maxLength={32} pattern="\+?[0-9 ()-]+" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="+55 85 99999-0000" />
+              <label htmlFor="tag-select">ETIQUETAS (ATÉ 10)</label>
+              <select id="tag-select" multiple value={selectedTags} onChange={(event) => setSelectedTags(Array.from(event.target.selectedOptions, (option) => option.value))}>{tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}</select>
+              <div className="tag-create"><input aria-label="Nova etiqueta" maxLength={32} value={newTag} onChange={(event) => setNewTag(event.target.value)} placeholder="Nome da etiqueta" /><button type="button" disabled={!newTag.trim()} onClick={() => void createTag()}>Criar etiqueta</button></div>
               <button className="submit-button" type="submit" disabled={saving}>{saving ? 'Salvando…' : editing ? 'Salvar alterações' : <>Adicionar cliente <span aria-hidden="true">↗</span></>}</button>
               {editing ? <button className="cancel-button" type="button" onClick={resetForm}>Cancelar edição</button> : null}
               <div className="form-footnote"><span className="lock-icon">⌑</span> Seus dados ficam neste dispositivo.</div>

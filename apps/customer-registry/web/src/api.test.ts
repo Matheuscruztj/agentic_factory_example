@@ -13,14 +13,14 @@ describe('usersApi', () => {
   })
 
   it('sends create data as JSON', async () => {
-    const user = { id: '1', username: 'ana', name: 'Ana', email: 'ana@example.com', status: 'active' }
+    const user = { id: '1', username: 'ana', name: 'Ana', email: 'ana@example.com', phone: null, status: 'active' }
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(user), { status: 201 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(usersApi.create('ana', 'Ana', 'ana@example.com')).resolves.toEqual(user)
+    await expect(usersApi.create('ana', 'Ana', 'ana@example.com', '', [])).resolves.toEqual(user)
     expect(fetchMock.mock.calls[0][1]).toMatchObject({
       method: 'POST',
-      body: JSON.stringify({ username: 'ana', name: 'Ana', email: 'ana@example.com' }),
+      body: JSON.stringify({ username: 'ana', name: 'Ana', email: 'ana@example.com', phone: null, tag_ids: [] }),
     })
   })
 
@@ -29,6 +29,6 @@ describe('usersApi', () => {
       JSON.stringify({ detail: { code: 'EMAIL_ALREADY_EXISTS' } }), { status: 409 },
     )))
 
-    await expect(usersApi.create('ana', 'Ana', 'ana@example.com')).rejects.toThrow('EMAIL_ALREADY_EXISTS')
+    await expect(usersApi.create('ana', 'Ana', 'ana@example.com', '', [])).rejects.toThrow('EMAIL_ALREADY_EXISTS')
   })
 })

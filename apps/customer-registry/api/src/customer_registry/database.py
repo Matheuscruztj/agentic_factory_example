@@ -5,7 +5,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from shared_contracts.db import Base
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -38,3 +38,7 @@ def initialize_sqlite() -> None:
         import customer_registry.models  # noqa: F401
 
         Base.metadata.create_all(get_engine())
+        columns = {column["name"] for column in inspect(get_engine()).get_columns("users")}
+        if "phone" not in columns:
+            with get_engine().begin() as connection:
+                connection.execute(text("ALTER TABLE users ADD COLUMN phone VARCHAR(32)"))
