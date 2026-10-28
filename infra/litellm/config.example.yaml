@@ -1,0 +1,25 @@
+model_list:
+  - model_name: chat
+    litellm_params:
+      model: ollama_chat/qwen3:4b
+      api_base: http://ollama:11434
+      api_key: os.environ/OLLAMA_API_KEY
+      reasoning_effort: minimal
+  - model_name: coding
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:7b
+      api_base: http://ollama:11434
+      api_key: os.environ/OLLAMA_API_KEY
+  - model_name: judge
+    litellm_params:
+      model: ollama_chat/qwen3:4b
+      api_base: http://ollama:11434
+      api_key: os.environ/OLLAMA_API_KEY
+      reasoning_effort: minimal
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  set_verbose: false
+  drop_params: true

@@ -1,0 +1,34 @@
+name: factory-observability
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.123.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+    profiles: ["observability"]
+    restart: unless-stopped
+    mem_limit: 256m
+    cpus: 0.5
+    networks: [telemetry]
+  phoenix:
+    image: arizephoenix/phoenix:11.0.0
+    environment:
+      PHOENIX_PORT: "6006"
+      PHOENIX_WORKING_DIR: /phoenix-data
+    volumes:
+      - phoenix-data:/phoenix-data
+    ports:
+      - "127.0.0.1:6006:6006"
+    profiles: ["phoenix"]
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.0
+    networks: [telemetry]
+volumes:
+  phoenix-data:
+networks:
+  telemetry:
+    internal: true

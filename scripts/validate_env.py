@@ -14,9 +14,9 @@ import re
 import sys
 import time
 from pathlib import Path
-from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
-from urllib.request import Request, urlopen
+
+import httpx
 
 SERVICES = (
     "github",
@@ -29,6 +29,7 @@ SERVICES = (
     "core",
     "openbot",
     "phoenix",
+    "litellm",
 )
 PROBE_ERROR = {"CONFIG": 1, "AUTH": 1, "NETWORK": 2, "SERVICE": 2}
 
@@ -101,6 +102,8 @@ def is_enabled(cfg: dict[str, str], service: str, required: set[str]) -> bool:
         return bool(cfg.get("OPENBOT_API_KEY"))
     if service == "phoenix":
         return False
+    if service == "litellm":
+        return bool(cfg.get("LITELLM_MASTER_KEY"))
     return False
 
 
@@ -129,24 +132,41 @@ def safe_url(raw: str, *, tls_required: bool = False, local_allowed: bool = True
 
 
 def http_json(url: str, headers: dict[str, str], timeout: float) -> dict:
+    safe_url(url)
     try:
-        req = Request(url, headers={**headers, "User-Agent": "agentic-factory-preflight/1.0"})
-        with urlopen(req, timeout=timeout) as resp:
-            content = resp.read(1024 * 1024)
+        with httpx.stream(
+            "GET",
+            url,
+            headers={**headers, "User-Agent": "agentic-factory-preflight/1.0"},
+            timeout=timeout,
+            follow_redirects=False,
+            trust_env=False,
+        ) as response:
+            if response.is_redirect:
+                raise ProbeError("SERVICE", f"HTTP_{response.status_code}")
+            if response.status_code in (401, 403):
+                raise ProbeError("AUTH", f"HTTP_{response.status_code}")
+            if response.status_code == 404:
+                raise ProbeError("CONFIG", "HTTP_404")
+            if response.status_code == 429:
+                raise ProbeError("SERVICE", "RATE_LIMITED")
+            if response.is_error:
+                raise ProbeError("SERVICE", f"HTTP_{response.status_code}")
+            content = bytearray()
+            for chunk in response.iter_bytes():
+                if len(content) + len(chunk) > 1024 * 1024:
+                    raise ProbeError("SERVICE", "RESPONSE_TOO_LARGE")
+                content.extend(chunk)
             value = json.loads(content)
             if not isinstance(value, dict):
                 raise ProbeError("SERVICE", "UNEXPECTED_RESPONSE")
             return value
-    except HTTPError as exc:
-        if exc.code in (401, 403):
-            raise ProbeError("AUTH", f"HTTP_{exc.code}") from None
-        if exc.code == 404:
-            raise ProbeError("CONFIG", "HTTP_404") from None
-        if exc.code == 429:
-            raise ProbeError("SERVICE", "RATE_LIMITED") from None
-        raise ProbeError("SERVICE", f"HTTP_{exc.code}") from None
-    except (URLError, TimeoutError, ConnectionError):
+    except httpx.TimeoutException:
         raise ProbeError("NETWORK", "UNREACHABLE") from None
+    except httpx.HTTPError:
+        raise ProbeError("NETWORK", "UNREACHABLE") from None
+    except ProbeError:
+        raise
     except (ValueError, UnicodeDecodeError):
         raise ProbeError("SERVICE", "INVALID_RESPONSE") from None
 
@@ -181,10 +201,6 @@ def github_app_jwt(cfg: dict[str, str]) -> str:
 
 
 def check_github(cfg: dict[str, str], live: bool, timeout: float) -> str:
-    require(cfg, "GITHUB_OWNER", "GITHUB_REPO")
-    owner, repo = cfg["GITHUB_OWNER"], cfg["GITHUB_REPO"]
-    if not re.fullmatch(r"[\w.-]+", owner) or not re.fullmatch(r"[\w.-]+", repo):
-        raise ProbeError("CONFIG", "INVALID_GITHUB_REPOSITORY")
     mode = cfg.get("GITHUB_AUTH_MODE", "pat").lower()
     api = safe_url(cfg.get("GITHUB_API_URL", "https://api.github.com"), tls_required=True)
     if mode == "pat":
@@ -192,7 +208,7 @@ def check_github(cfg: dict[str, str], live: bool, timeout: float) -> str:
         if not live:
             return "CONFIG_VALIDATED_NOT_AUTHENTICATED"
         http_json(
-            f"{api}/repos/{quote(owner)}/{quote(repo)}",
+            f"{api}/user",
             {
                 "Authorization": f"Bearer {cfg['GITHUB_TOKEN']}",
                 "Accept": "application/vnd.github+json",
@@ -386,19 +402,29 @@ def check_core(cfg: dict[str, str], live: bool, timeout: float) -> str:
 
 
 def http_status(url: str, headers: dict[str, str], timeout: float) -> int:
+    safe_url(url)
     try:
-        request = Request(url, headers={**headers, "User-Agent": "agentic-factory-preflight/2.0"})
-        with urlopen(request, timeout=timeout) as response:
-            response.read(4096)
-            return response.status
-    except HTTPError as exc:
-        if exc.code in (401, 403):
-            raise ProbeError("AUTH", f"HTTP_{exc.code}") from None
-        if exc.code == 404:
-            raise ProbeError("CONFIG", "HTTP_404") from None
-        raise ProbeError("SERVICE", f"HTTP_{exc.code}") from None
-    except (URLError, TimeoutError, ConnectionError):
+        with httpx.stream(
+            "GET",
+            url,
+            headers={**headers, "User-Agent": "agentic-factory-preflight/2.0"},
+            timeout=timeout,
+            follow_redirects=False,
+            trust_env=False,
+        ) as response:
+            if response.status_code in (401, 403):
+                raise ProbeError("AUTH", f"HTTP_{response.status_code}")
+            if response.status_code == 404:
+                raise ProbeError("CONFIG", "HTTP_404")
+            if response.is_redirect or response.is_error:
+                raise ProbeError("SERVICE", f"HTTP_{response.status_code}")
+            return response.status_code
+    except httpx.TimeoutException:
         raise ProbeError("NETWORK", "UNREACHABLE") from None
+    except httpx.HTTPError:
+        raise ProbeError("NETWORK", "UNREACHABLE") from None
+    except ProbeError:
+        raise
 
 
 def check_openbot(cfg: dict[str, str], live: bool, timeout: float) -> str:
@@ -429,6 +455,24 @@ def check_phoenix(cfg: dict[str, str], live: bool, timeout: float) -> str:
     return "PHOENIX_UI_REACHABLE_OTEL_EXPORT_NOT_VERIFIED"
 
 
+def check_litellm(cfg: dict[str, str], live: bool, timeout: float) -> str:
+    require(cfg, "LITELLM_BASE_URL", "LITELLM_MASTER_KEY")
+    host = safe_url(cfg["LITELLM_BASE_URL"])
+    key = cfg["LITELLM_MASTER_KEY"]
+    if not re.fullmatch(r"sk-[A-Za-z0-9_-]{24,}", key):
+        raise ProbeError("CONFIG", "LITELLM_MASTER_KEY_INVALID")
+    if not live:
+        return "CONFIG_VALIDATED_NOT_CONNECTED"
+    http_status(f"{host}/health/liveness", {}, timeout)
+    body = http_json(
+        f"{host}/v1/models", {"Authorization": f"Bearer {key}"}, timeout
+    )
+    aliases = {item.get("id") for item in body.get("data", []) if isinstance(item, dict)}
+    if not {"chat", "coding", "judge"}.issubset(aliases):
+        raise ProbeError("CONFIG", "MODEL_MISSING")
+    return "GATEWAY_AUTH_AND_ALIASES_VALIDATED_NO_INFERENCE"
+
+
 CHECKS = {
     "github": check_github,
     "telegram": check_telegram,
@@ -440,6 +484,7 @@ CHECKS = {
     "core": check_core,
     "openbot": check_openbot,
     "phoenix": check_phoenix,
+    "litellm": check_litellm,
 }
 
 

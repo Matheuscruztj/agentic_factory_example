@@ -33,6 +33,14 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(output["metrics"]["passed"], 1)
         self.assertNotIn("dummy_not_real", str(output))
 
+    def test_github_pat_without_global_repository(self):
+        self.path.write_text("GITHUB_TOKEN=dummy_not_real\n")
+        with patch.object(preflight, "http_json", return_value={"login": "operator"}) as probe:
+            code, output = preflight.run(self.path, "live", {"github"}, 1)
+        self.assertEqual(code, 0)
+        self.assertEqual(probe.call_args.args[0], "https://api.github.com/user")
+        self.assertNotIn("dummy_not_real", str(output))
+
     def test_missing_required_secret_is_fail_one(self):
         self.path.write_text("GITHUB_OWNER=o\nGITHUB_REPO=r\n")
         code, output = preflight.run(self.path, "local", {"github"}, 1)
@@ -60,7 +68,7 @@ class PreflightTests(unittest.TestCase):
         self.path.write_text("GITHUB_ENABLED=false\nTELEGRAM_ENABLED=false\n")
         code, output = preflight.run(self.path, "live", set(), 1)
         self.assertEqual(code, 0)
-        self.assertEqual(output["metrics"]["skipped"], 10)
+        self.assertEqual(output["metrics"]["skipped"], 11)
 
     def test_core_requires_local_only_and_strong_secret(self):
         self.path.write_text("FACTORY_ENV=local\nAPP_SECRET_KEY=short\n")
@@ -159,6 +167,53 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(code, 0)
         check = next(item for item in output["checks"] if item["service"] == "phoenix")
         self.assertEqual(check["status"], "pass")
+
+    def test_litellm_local_validates_without_network_and_redacts_key(self):
+        key = "sk-" + "x" * 32
+        self.path.write_text(
+            f"LITELLM_BASE_URL=http://127.0.0.1:4000\nLITELLM_MASTER_KEY={key}\n"
+        )
+        with patch.object(preflight, "http_status", side_effect=AssertionError("network called")):
+            code, output = preflight.run(self.path, "local", {"litellm"}, 1)
+        self.assertEqual(code, 0)
+        check = next(item for item in output["checks"] if item["service"] == "litellm")
+        self.assertEqual(check["status"], "pass")
+        self.assertNotIn(key, str(output))
+
+    def test_litellm_live_checks_auth_and_aliases_without_inference(self):
+        self.path.write_text(
+            "LITELLM_BASE_URL=http://127.0.0.1:4000\nLITELLM_MASTER_KEY=sk-"
+            + "x" * 32
+            + "\n"
+        )
+        aliases = {"data": [{"id": name} for name in ("chat", "coding", "judge")]}
+        with (
+            patch.object(preflight, "http_status", return_value=200) as health,
+            patch.object(preflight, "http_json", return_value=aliases) as models,
+        ):
+            code, output = preflight.run(self.path, "live", {"litellm"}, 1)
+        self.assertEqual(code, 0)
+        self.assertEqual(health.call_count, 1)
+        self.assertEqual(models.call_count, 1)
+        self.assertEqual(
+            next(item for item in output["checks"] if item["service"] == "litellm")["status"],
+            "pass",
+        )
+
+    def test_litellm_missing_alias_fails_without_logging_key(self):
+        key = "sk-" + "x" * 32
+        self.path.write_text(
+            f"LITELLM_BASE_URL=http://127.0.0.1:4000\nLITELLM_MASTER_KEY={key}\n"
+        )
+        with (
+            patch.object(preflight, "http_status", return_value=200),
+            patch.object(preflight, "http_json", return_value={"data": [{"id": "chat"}]}),
+        ):
+            code, output = preflight.run(self.path, "live", {"litellm"}, 1)
+        self.assertEqual(code, 1)
+        check = next(item for item in output["checks"] if item["service"] == "litellm")
+        self.assertEqual(check["reason"], "MODEL_MISSING")
+        self.assertNotIn(key, str(output))
 
     def test_cli_emits_one_json_line_and_exit_contract_0_1_2(self):
         self.path.write_text(

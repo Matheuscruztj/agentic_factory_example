@@ -1,0 +1,22 @@
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:v1.106.4@sha256:c169fb3adc514fcf210377c203f3de406d54f10bfdacf13948a4a839db9af7de
+    profiles: [litellm]
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?set LITELLM_MASTER_KEY before enabling the litellm profile}
+      LITELLM_OFFLINE_MODE: "true"
+      LITELLM_LOCAL_MODEL_COST_MAP: "true"
+      OLLAMA_API_KEY: ollama-local
+    volumes:
+      - ../litellm/config.example.yaml:/app/config.yaml:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks: [agent_backplane]

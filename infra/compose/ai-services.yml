@@ -1,0 +1,113 @@
+name: agentic-factory-ai
+
+services:
+  ollama:
+    image: ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-1}
+      OLLAMA_MAX_LOADED_MODELS: ${OLLAMA_MAX_LOADED_MODELS:-1}
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:-5m}
+    volumes:
+      - ollama_models:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    networks: [agent_backplane, ollama_egress]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  openbot:
+    build:
+      context: ../../.runtime/openbot-source
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      OPENBOT_API_KEY: ${OPENBOT_API_KEY:?set OPENBOT_API_KEY in the local .env}
+      OPENBOT_LISTEN_PORT: "8000"
+      DATABASE_URL: sqlite+aiosqlite:////data/openbot.db
+      SECRET_KEY_FILE: /data/secret.key
+      MCP_TOKEN_KEY_FILE: /data/mcp_token.key
+      MCP_CONFIG: /data/mcp.json
+      LOG_FILE: /data/logs/openbot.log
+      WORKSPACE_ROOT: /workspace
+      TOOLS_DIR: /app/tools
+      FRONTEND_DIST: ""
+      SEED_DEMO_BOTS: "false"
+      OPENBOT_DISABLE_RUN_SHELL: "true"
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL_CHAT:-qwen3:4b}
+      LANGSMITH_TRACING: "false"
+    volumes:
+      - openbot_data:/data
+      - openbot_workspace:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks: [agent_backplane]
+    healthcheck:
+      test:
+        - CMD
+        - /app/backend/.venv/bin/python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=2)"
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 45s
+
+  openbot-gateway:
+    image: nginx@sha256:5616878291a2eed594aee8db4dade5878cf7edcb475e59193904b198d9b830de
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8002:8000"
+    volumes:
+      # Mount a directory rather than a single file. Docker Desktop/WSL can
+      # otherwise treat a stale file bind mount as a directory and fail with
+      # OCI "not a directory" when the gateway starts.
+      - ./nginx:/etc/nginx/conf.d:ro
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:rw,noexec,nosuid,size=16m
+      - /var/run:rw,noexec,nosuid,size=1m
+      - /tmp:rw,noexec,nosuid,size=1m
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID]
+    security_opt: [no-new-privileges:true]
+    depends_on:
+      openbot:
+        condition: service_healthy
+    networks: [agent_backplane, openbot_ingress]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  ollama_models:
+  openbot_data:
+  openbot_workspace:
+
+networks:
+  agent_backplane:
+    internal: true
+  ollama_egress:
+    driver: bridge
+  openbot_ingress:
+    driver: bridge

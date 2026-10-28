@@ -62,6 +62,10 @@ def main() -> int:
                         [
                             "uv",
                             "run",
+                            "--frozen",
+                            "--all-packages",
+                            "--group",
+                            "api",
                             "uvicorn",
                             "factory_api.main:app",
                             "--app-dir",
@@ -80,6 +84,10 @@ def main() -> int:
                 command = [
                     "uv",
                     "run",
+                    "--frozen",
+                    "--all-packages",
+                    "--group",
+                    "api",
                     "uvicorn",
                     "customer_registry.main:app",
                     "--app-dir",
