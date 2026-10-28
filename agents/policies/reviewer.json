@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "persona_id": "reviewer",
+  "model_env": "OLLAMA_MODEL_JUDGE",
+  "prompt_file": "agents/prompts/reviewer-v1.md",
+  "independent_from_executor": true,
+  "tools": [],
+  "rubric": {
+    "version": "reviewer-v1",
+    "required_evidence": ["diff", "requirements", "quality_gates"],
+    "inspect": ["scope", "secrets", "authorization", "migrations", "regressions"],
+    "severity": ["critical", "high", "medium", "low", "info"],
+    "reject_on": ["critical", "high"]
+  }
+}

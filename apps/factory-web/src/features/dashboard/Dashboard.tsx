@@ -1,19 +1,28 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   createDemand, decideApproval, getApprovals, getDemand, getDemands, getSession,
   getStatus, getTasks, login, logout, requestApproval, runFakeScheduler,
-  type ServiceStatus, type StatusResponse,
+  openAgentConversation, getAgentConversation, sendAgentMessage, acceptTaskProposal,
+  type AgentConversationMessage, type ServiceStatus, type StatusResponse,
 } from '../../lib/api/client'
 import type { DemandView, TaskView } from '../../lib/api/generated'
+import { AgentsChat } from '../agents-chat/AgentsChat'
+import { RunFeedback } from '../evals/RunFeedback'
+import { PromptReleases } from '../evals/PromptReleases'
+import { MetricsDashboard } from '../observability/MetricsDashboard'
+import { BenchmarkDashboard } from '../observability/BenchmarkDashboard'
 
 const apiBase = import.meta.env.VITE_FACTORY_API_URL ?? 'http://127.0.0.1:8001'
 const labels: Record<string, string> = { database: 'PostgreSQL', redis: 'Redis', customer_registry: 'Customer Registry', ollama: 'Ollama', github: 'GitHub', openbot: 'OpenBot', telegram: 'Telegram', jira: 'Jira' }
 const describe: Record<ServiceStatus, string> = { ready: 'Pronto', configured: 'Configurado', available: 'Disponível', unavailable: 'Indisponível', misconfigured: 'Configuração incompleta', disabled: 'Desativado' }
-type Tab = 'demands' | 'tasks' | 'approvals' | 'status'
-type Approval = { id: string; entity_type: string; entity_id: string; status: string; requested_by: string; payload_hash: string }
+type Tab = 'demands' | 'tasks' | 'approvals' | 'evals' | 'observability' | 'benchmarks' | 'status'
+type Approval = { id: string; entity_type: string; entity_id: string; status: string; requested_by: string; payload_hash: string; subject_current: boolean; subject: Record<string, unknown> }
 
 export function Dashboard() {
-  const [tab, setTab] = useState<Tab>('demands')
+  const [tab, setTab] = useState<Tab>(() => {
+    const requested = new URLSearchParams(window.location.search).get('tab')
+    return requested === 'approvals' ? 'approvals' : 'demands'
+  })
   const [authenticated, setAuthenticated] = useState(false)
   const [authEnabled, setAuthEnabled] = useState(true)
   const [csrf, setCsrf] = useState('')
@@ -32,6 +41,95 @@ export function Dashboard() {
   const [saving, setSaving] = useState(false)
   const [simulation, setSimulation] = useState('')
   const [error, setError] = useState('')
+  const [chatMessages, setChatMessages] = useState<AgentConversationMessage[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatActive, setChatActive] = useState(false)
+  const [chatBusy, setChatBusy] = useState(false)
+  const [chatError, setChatError] = useState('')
+  const [chatReference, setChatReference] = useState('')
+  const [chatDemandId, setChatDemandId] = useState('')
+  const [chatPersona, setChatPersona] = useState('qa')
+  const conversationRequest = useRef(0)
+  const activeConversationDemandId = useRef('')
+  const intakeRequest = useRef<{ fingerprint: string; externalId: string } | null>(null)
+
+  async function loadConversation(demandId: string, persona = chatPersona) {
+    const requestId = ++conversationRequest.current
+    activeConversationDemandId.current = demandId
+    setChatDemandId(demandId); setChatPersona(persona); setChatLoading(true); setChatActive(false); setChatError(''); setChatMessages([])
+    try {
+      const conversation = await openAgentConversation(demandId, persona)
+      if (requestId !== conversationRequest.current) return
+      setChatReference(conversation.reference)
+      setChatMessages(conversation.messages)
+      setChatActive(conversation.active)
+    } catch (reason) {
+      if (requestId === conversationRequest.current) setChatError(reason instanceof Error ? reason.message : 'Não foi possível abrir a conversa.')
+    }
+    finally { if (requestId === conversationRequest.current) setChatLoading(false) }
+  }
+
+  async function sendChatMessage(input: { persona: string; reference: string; content: string }) {
+    if (!chatDemandId) throw new Error('Selecione uma demanda antes de enviar.')
+    const demandId = chatDemandId
+    setChatBusy(true); setChatError('')
+    try {
+      await sendAgentMessage(demandId, input.content, input.persona)
+      const conversation = await getAgentConversation(demandId, input.persona)
+      if (activeConversationDemandId.current !== demandId) return
+      setChatMessages(conversation.messages)
+      setChatActive(conversation.active)
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Não foi possível enviar a mensagem.'
+      setChatError(message)
+      throw reason instanceof Error ? reason : new Error(message)
+    }
+    finally { setChatBusy(false) }
+  }
+
+  async function acceptChatProposal(input: { proposal_id: string; payload_hash: string; owner_role: string; path_scopes: string[]; acceptance: string[] }) {
+    if (!chatDemandId) throw new Error('Selecione uma demanda antes de aceitar a proposta.')
+    const demandId = chatDemandId
+    const persona = chatPersona
+    setChatBusy(true); setChatError('')
+    try {
+      const result = await acceptTaskProposal(demandId, input.proposal_id, {
+        payload_hash: input.payload_hash,
+        owner_role: input.owner_role,
+        path_scopes: input.path_scopes,
+        acceptance: input.acceptance,
+        dependencies: [],
+        risk: 'normal',
+      })
+      const [conversation, nextDetail] = await Promise.all([
+        getAgentConversation(demandId, persona),
+        getDemand(demandId),
+      ])
+      if (activeConversationDemandId.current === demandId) {
+        setChatMessages(conversation.messages)
+        setDetail(nextDetail)
+        setSimulation(`Proposta aceita como tarefa ${result.task_id.slice(0, 8)}; permanece aguardando os gates e a execução autorizada.`)
+      }
+      await refreshOperations()
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : 'Não foi possível aceitar a proposta.'
+      setChatError(message)
+      throw reason instanceof Error ? reason : new Error(message)
+    } finally { setChatBusy(false) }
+  }
+
+  useEffect(() => {
+    if (!chatDemandId || !chatActive) return
+    const timer = window.setInterval(() => {
+      const requestId = conversationRequest.current
+      void getAgentConversation(chatDemandId, chatPersona).then((conversation) => {
+        if (requestId !== conversationRequest.current) return
+        setChatMessages(conversation.messages)
+        setChatActive(conversation.active)
+      }).catch((reason: Error) => { if (requestId === conversationRequest.current) setChatError(reason.message) })
+    }, 2_000)
+    return () => window.clearInterval(timer)
+  }, [chatActive, chatDemandId, chatPersona])
 
   async function refreshOperations() {
     const [nextDemands, nextTasks, nextApprovals] = await Promise.all([getDemands(), getTasks(), getApprovals()])
@@ -69,8 +167,15 @@ export function Dashboard() {
   async function submit(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError('')
     try {
-      const demand = await createDemand({ source: 'manual', external_id: crypto.randomUUID(), title,
-        demand_type: 'feature', requirement, acceptance: acceptance.split('\n').map((line) => line.trim()).filter(Boolean) })
+      const criteria = acceptance.split('\n').map((line) => line.trim()).filter(Boolean)
+      const fingerprint = JSON.stringify({ title, requirement, acceptance: criteria })
+      const externalId = intakeRequest.current?.fingerprint === fingerprint
+        ? intakeRequest.current.externalId
+        : crypto.randomUUID()
+      intakeRequest.current = { fingerprint, externalId }
+      const demand = await createDemand({ source: 'manual', external_id: externalId, title,
+        demand_type: 'feature', requirement, acceptance: criteria })
+      intakeRequest.current = null
       setTitle(''); setRequirement(''); setAcceptance(''); await refreshOperations(); setDetail(await getDemand(demand.id))
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Não foi possível criar a demanda.') }
     finally { setSaving(false) }
@@ -94,14 +199,17 @@ export function Dashboard() {
     <header><a className="wordmark" href="#home"><span className="mark">af</span> agentic factory</a><div className="header-actions">{authenticated && authEnabled && <button className="logout" onClick={() => void signOut()}>Sair</button>}<span className="local"><i /> ambiente local</span></div></header>
     <section className="hero"><p className="eyebrow">PAINEL DE OPERAÇÃO · 01</p><h1>Bom trabalho começa<br /><em>com clareza.</em></h1><p className="sub">Acompanhe demandas, tarefas e serviços locais em um só lugar.</p></section>
     {authEnabled && !authenticated ? <section className="login card"><p className="eyebrow">ACESSO DO OPERADOR</p><h2>Entre para continuar</h2><form onSubmit={(event) => void signIn(event)}><label htmlFor="password">Senha local</label><input id="password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /><button>Entrar <span>↗</span></button></form>{error && <p role="alert" className="error">{error}</p>}</section> : <>
-      <nav className="operation-tabs" aria-label="Áreas da fábrica">{(['demands', 'tasks', 'approvals', 'status'] as const).map((item) => <button key={item} aria-pressed={tab === item} onClick={() => setTab(item)}>{({ demands: 'Demandas', tasks: 'Tarefas', approvals: `Aprovações (${approvals.length})`, status: 'Serviços' })[item]}</button>)}</nav>
+      <nav className="operation-tabs" aria-label="Áreas da fábrica">{(['demands', 'tasks', 'approvals', 'evals', 'observability', 'benchmarks', 'status'] as const).map((item) => <button key={item} aria-pressed={tab === item} onClick={() => setTab(item)}>{({ demands: 'Demandas', tasks: 'Tarefas', approvals: `Aprovações (${approvals.length})`, evals: 'Evals e feedback', observability: 'Observabilidade', benchmarks: 'Benchmarks', status: 'Serviços' })[item]}</button>)}</nav>
       {error && <p role="alert" className="banner error">{error}</p>}
-      {tab === 'demands' && <section className="operations"><div className="operation-column"><h2>Demandas <span>{demands.length}</span></h2><label className="filter-label" htmlFor="demand-filter">Filtrar por estado</label><select id="demand-filter" value={demandStatus} onChange={(event) => setDemandStatus(event.target.value)}><option value="all">Todos</option>{[...new Set(demands.map((demand) => demand.status))].map((status) => <option key={status}>{status}</option>)}</select>{demands.filter((demand) => demandStatus === 'all' || demand.status === demandStatus).map((demand) => <button className="operation-row" key={demand.id} onClick={() => void getDemand(demand.id).then(setDetail).catch((reason: Error) => setError(reason.message))}><strong>{demand.title}</strong><span>{demand.status} · v{demand.version}</span></button>)}{!demands.length && <p className="empty">Ainda não há demandas.</p>}</div>
+      {tab === 'demands' && <section className="operations"><div className="operation-column"><h2>Demandas <span>{demands.length}</span></h2><label className="filter-label" htmlFor="demand-filter">Filtrar por estado</label><select id="demand-filter" value={demandStatus} onChange={(event) => setDemandStatus(event.target.value)}><option value="all">Todos</option>{[...new Set(demands.map((demand) => demand.status))].map((status) => <option key={status}>{status}</option>)}</select>{demands.filter((demand) => demandStatus === 'all' || demand.status === demandStatus).map((demand) => <button className="operation-row" key={demand.id} onClick={() => void getDemand(demand.id).then((next) => { setDetail(next); void loadConversation(demand.id) }).catch((reason: Error) => setError(reason.message))}><strong>{demand.title}</strong><span>{demand.status} · v{demand.version}</span></button>)}{!demands.length && <p className="empty">Ainda não há demandas.</p>}</div>
         <form className="intake card" onSubmit={(event) => void submit(event)}><p className="eyebrow">NOVA SOLICITAÇÃO</p><h2>Registrar demanda</h2><label htmlFor="demand-title">Título</label><input id="demand-title" required maxLength={240} value={title} onChange={(event) => setTitle(event.target.value)} /><label htmlFor="demand-requirement">Requisito</label><textarea id="demand-requirement" required value={requirement} onChange={(event) => setRequirement(event.target.value)} /><label htmlFor="demand-acceptance">Critérios de aceite, um por linha</label><textarea id="demand-acceptance" required value={acceptance} onChange={(event) => setAcceptance(event.target.value)} /><button disabled={saving}>{saving ? 'Salvando…' : 'Criar demanda'}</button></form>
-        {detail && <article className="operation-column demand-detail"><button className="back-link" onClick={() => setDetail(null)}>← Todas as demandas</button><p className="eyebrow">DETALHE DA DEMANDA</p><h2>{detail.demand.title}</h2><p>{detail.demand.status} · versão {detail.demand.version}</p>{detail.revisions.map((revision) => <div className="revision" key={revision.id}><strong>Requisito v{revision.version}</strong><p>{revision.content}</p><ul>{revision.acceptance.map((criterion) => <li key={criterion}>{criterion}</li>)}</ul></div>)}<h3>Tarefas e dependências</h3>{detail.tasks.map((task) => <div className="task-row" key={task.id}><strong>{task.title}</strong><span>{task.owner_role} · {task.status}</span>{(task.dependencies?.length ?? 0) > 0 && <small>Bloqueada por: {(task.dependencies ?? []).map((id) => detail.tasks.find((item) => item.id === id)?.title ?? id).join(', ')}</small>}</div>)}<button onClick={() => void runFakeScheduler(detail.demand.id).then((result) => { setSimulation(result.model_called ? 'Modelo chamado.' : 'Simulação concluída sem LLM.'); return refreshOperations() }).catch((reason: Error) => setError(reason.message))}>Executar simulação local</button>{simulation && <p role="status">{simulation}</p>}<button onClick={() => void requestApproval({ entity_type: 'demand', entity_id: detail.demand.id }).then(refreshOperations).catch((reason: Error) => setError(reason.message))}>Pedir revisão humana</button></article>}
+        {detail && <article className="operation-column demand-detail"><button className="back-link" onClick={() => { conversationRequest.current += 1; activeConversationDemandId.current = ''; setDetail(null); setChatDemandId(''); setChatActive(false); setChatMessages([]) }}>← Todas as demandas</button><p className="eyebrow">DETALHE DA DEMANDA</p><h2>{detail.demand.title}</h2><p>{detail.demand.status} · versão {detail.demand.version}</p>{detail.revisions.map((revision) => <div className="revision" key={revision.id}><strong>Requisito v{revision.version}</strong><p>{revision.content}</p><ul>{revision.acceptance.map((criterion) => <li key={criterion}>{criterion}</li>)}</ul></div>)}<h3>Tarefas e dependências</h3>{detail.tasks.map((task) => <div className="task-row" key={task.id}><strong>{task.title}</strong><span>{task.owner_role} · {task.status}</span>{(task.dependencies?.length ?? 0) > 0 && <small>Depende de: {(task.dependencies ?? []).map((id) => detail.tasks.find((item) => item.id === id)?.title ?? id).join(', ')}</small>}{task.blocked_reason && <small className="blocked-reason">Bloqueio: {task.blocked_reason}</small>}{(task.runs ?? []).map((run) => <section className="run-evidence" key={run.id}><strong>Run {run.attempt} · {run.status}</strong><small>Base {run.base_git_sha.slice(0, 12)}{run.result_git_sha ? ` → ${run.result_git_sha.slice(0, 12)}` : ''}</small>{run.gates.map((gate) => <small key={`${run.id}-${gate.check_name}`}>Gate {gate.check_name}: {gate.status} · SHA {gate.git_sha.slice(0, 12)}</small>)}{run.artifacts.map((artifact) => <small key={artifact.id}>{/\.(diff|patch)$/i.test(artifact.path) ? <a href={`${apiBase}/api/v1/demands/${encodeURIComponent(detail.demand.id)}/runs/${encodeURIComponent(run.id)}/artifacts/${encodeURIComponent(artifact.id)}`} target="_blank" rel="noreferrer">Ver diff: {artifact.path}</a> : <>Evidência: {artifact.path} · {artifact.sha256.slice(0, 12)}</>}</small>)}</section>)}</div>)}<button onClick={() => void runFakeScheduler(detail.demand.id).then((result) => { setSimulation(result.human_review_required ? `Simulação encerrada; ${result.reviewed_task_ids.length} tarefa(s) aguardam revisão humana.` : 'Simulação concluída.'); return refreshOperations() }).catch((reason: Error) => setError(reason.message))}>Executar simulação local</button>{simulation && <p role="status">{simulation}</p>}<button onClick={() => void requestApproval({ entity_type: 'demand', entity_id: detail.demand.id }).then(refreshOperations).catch((reason: Error) => setError(reason instanceof Error ? reason.message : 'Falha ao registrar aprovação.'))}>Pedir revisão humana</button><AgentsChat reference={chatReference} messages={chatMessages} loading={chatLoading} busy={chatBusy} error={chatError} onSend={sendChatMessage} onAcceptProposal={acceptChatProposal} onPersonaChange={(persona) => { if (chatDemandId) void loadConversation(chatDemandId, persona) }} /></article>}
       </section>}
       {tab === 'tasks' && <section className="operation-column task-board" aria-label="Tarefas por estado"><h2>Tarefas <span>{tasks.length}</span></h2><div className="task-grid">{['proposed', 'ready', 'leased', 'running', 'review', 'done', 'blocked', 'failed'].map((status) => <section className="task-lane" key={status}><h3>{status}</h3>{tasks.filter((task) => task.status === status).map((task) => <article className="task-card" key={task.id}><strong>{task.title}</strong><span>{task.owner_role}</span>{(task.dependencies?.length ?? 0) > 0 && <small>Depende de {task.dependencies?.length ?? 0} tarefa(s)</small>}</article>)}</section>)}</div></section>}
-      {tab === 'approvals' && <section className="operation-column"><h2>Caixa de revisão humana</h2>{approvals.map((item) => <article className="approval-row" key={item.id}><div><strong>{item.entity_type} · {item.entity_id.slice(0, 8)}</strong><span>Solicitado por {item.requested_by} · hash {item.payload_hash.slice(0, 12)}</span></div><button onClick={() => void decide(item.id, 'approved')}>Aprovar</button><button className="reject" onClick={() => void decide(item.id, 'rejected')}>Solicitar alterações</button></article>)}{!approvals.length && <p className="empty">Nenhuma revisão pendente.</p>}</section>}
+      {tab === 'approvals' && <section className="operation-column"><h2>Caixa de revisão humana</h2>{approvals.map((item) => <article className="approval-row" key={item.id}><div><strong>{item.entity_type} · {item.entity_id.slice(0, 8)}</strong><span>Solicitado por {item.requested_by} · hash {item.payload_hash.slice(0, 12)}</span><details><summary>{item.subject_current ? 'Inspecionar conteúdo e plano' : 'Conteúdo mudou; decisão bloqueada'}</summary><pre>{JSON.stringify(item.subject, null, 2)}</pre></details></div><button disabled={!item.subject_current} onClick={() => void decide(item.id, 'approved')}>Aprovar</button><button className="reject" disabled={!item.subject_current} onClick={() => void decide(item.id, 'rejected')}>Solicitar alterações</button></article>)}{!approvals.length && <p className="empty">Nenhuma revisão pendente.</p>}</section>}
+      {tab === 'evals' && <><RunFeedback /><PromptReleases /></>}
+      {tab === 'observability' && <MetricsDashboard />}
+      {tab === 'benchmarks' && <BenchmarkDashboard />}
       {tab === 'status' && <><section className="overview"><div><p className="eyebrow">STATUS DO AMBIENTE</p><h2>{loading ? 'Verificando serviços…' : error ? 'A API não respondeu.' : 'Sua fábrica local.'}</h2></div><button className="refresh" onClick={() => void refresh()} disabled={loading}>↻ Atualizar</button></section><section className="cards" aria-label="Status dos serviços">{Object.entries(services).map(([key, value]) => <article className="card service" key={key}><div className="service-top"><span className="service-icon">◇</span><span className={`state state-${value}`}><i />{describe[value]}</span></div><h3>{labels[key] ?? key}</h3><p>Estado sanitizado do serviço local</p></article>)}</section><section className="note"><span className="note-mark">i</span><p><strong>Seus segredos ficam no servidor local.</strong> Tokens e senhas nunca são enviados ao navegador.</p></section></>}
       {events.length > 0 && <aside className="live-events" aria-label="Atividade recente"><strong>Atividade ao vivo</strong>{events.map((event, index) => <span key={`${event}-${index}`}>{event}</span>)}</aside>}
     </>}

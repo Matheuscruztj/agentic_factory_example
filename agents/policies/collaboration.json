@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "max_agent_hops": 3,
+  "max_tool_calls": 20,
+  "max_repeated_messages": 1,
+  "external_message_resets_hops": true,
+  "write_requests_create_proposals": true,
+  "shell_or_arbitrary_http_tools_allowed": false
+}

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import re
 from dataclasses import dataclass
@@ -22,11 +23,18 @@ class Skill:
 def load_registry(path: str | Path) -> tuple[Skill, ...]:
     registry = Path(path).resolve()
     data = json.loads(registry.read_text(encoding="utf-8"))
-    if data.get("version") != 1 or not isinstance(data.get("skills"), list):
+    if (
+        not isinstance(data, dict)
+        or type(data.get("version")) is not int
+        or data.get("version") != 1
+        or not isinstance(data.get("skills"), list)
+    ):
         raise ValueError("INVALID_SKILL_REGISTRY")
     result = []
     seen = set()
     for entry in data["skills"]:
+        if not isinstance(entry, dict):
+            raise ValueError("INVALID_SKILL_ENTRY")
         skill_id, filename = entry.get("id"), entry.get("file")
         if (
             not isinstance(skill_id, str)
@@ -40,12 +48,32 @@ def load_registry(path: str | Path) -> tuple[Skill, ...]:
         if content_path.parent != registry.parent or not content_path.is_file():
             raise ValueError("SKILL_FILE_MISSING")
         content_hash = hashlib.sha256(content_path.read_bytes()).hexdigest()
+        expected_hash = entry.get("sha256")
+        if (
+            not isinstance(expected_hash, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", expected_hash)
+            or not hmac.compare_digest(content_hash, expected_hash)
+        ):
+            raise ValueError("SKILL_HASH_MISMATCH")
+        version = entry.get("version")
+        triggers = entry.get("triggers")
+        weight = entry.get("weight")
+        if (
+            not isinstance(version, str)
+            or not version.strip()
+            or not isinstance(triggers, list)
+            or not triggers
+            or not all(isinstance(trigger, str) and trigger.strip() for trigger in triggers)
+            or type(weight) is not int
+            or weight < 1
+        ):
+            raise ValueError("INVALID_SKILL_METADATA")
         result.append(
             Skill(
                 skill_id,
-                entry["version"],
-                tuple(entry["triggers"]),
-                int(entry["weight"]),
+                version,
+                tuple(triggers),
+                weight,
                 filename,
                 content_hash,
             )

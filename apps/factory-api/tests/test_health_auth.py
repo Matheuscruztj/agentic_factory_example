@@ -15,17 +15,47 @@ def test_liveness_readiness_and_config_redaction(tmp_path: Path, monkeypatch) ->
     monkeypatch.setattr(main, "engine", engine)
     monkeypatch.setattr(main, "settings", replace(main.settings, auth_enabled=False))
     monkeypatch.setenv("GITHUB_ENABLED", "true")
-    monkeypatch.setenv("GITHUB_OWNER", "local-owner")
+    monkeypatch.delenv("GITHUB_OWNER", raising=False)
+    monkeypatch.delenv("GITHUB_REPO", raising=False)
+    monkeypatch.setenv("GITHUB_AUTH_MODE", "pat")
     monkeypatch.setenv("GITHUB_TOKEN", "do-not-return-this-value")
     with TestClient(main.app) as client:
         assert client.get("/health/live").json() == {"status": "ok"}
         assert client.get("/health/ready").status_code == 200
+        headers = client.get("/health/live").headers
+        assert headers["X-Content-Type-Options"] == "nosniff"
+        assert headers["X-Frame-Options"] == "DENY"
+        assert "frame-ancestors 'none'" in headers["Content-Security-Policy"]
         result = client.get("/api/v1/config/status").json()
         assert result["secrets_exposed"] is False
         assert "password" not in str(result).lower()
-        assert result["integrations"]["github"] == "misconfigured"
+        assert result["integrations"]["github"] == "configured"
         assert "do-not-return-this-value" not in str(result)
     engine.dispose()
+
+
+def test_demand_and_task_filters_reject_malformed_values(monkeypatch) -> None:
+    monkeypatch.setattr(main, "settings", replace(main.settings, auth_enabled=False))
+    with TestClient(main.app) as client:
+        assert client.get("/api/v1/demands", params={"status": "bad\x00value"}).status_code == 422
+        assert client.get("/api/v1/demands", params={"status": "bad-status"}).status_code == 422
+        assert client.get(
+            "/api/v1/tasks", params={"status": "bad\x00value"}
+        ).status_code == 422
+        assert client.get("/api/v1/tasks", params={"status": "bad-status"}).status_code == 422
+        assert client.get(
+            "/api/v1/tasks", params={"demand_id": "bad\x00value"}
+        ).status_code == 422
+
+
+def test_request_correlation_id_is_returned_and_invalid_input_is_replaced(monkeypatch) -> None:
+    monkeypatch.setattr(main, "settings", replace(main.settings, auth_enabled=False))
+    with TestClient(main.app) as client:
+        accepted = client.get("/health/live", headers={"X-Correlation-ID": "task:123"})
+        assert accepted.headers["X-Correlation-ID"] == "task:123"
+        replaced = client.get("/health/live", headers={"X-Correlation-ID": "bad\r\nvalue"})
+        assert replaced.status_code == 200
+        assert replaced.headers["X-Correlation-ID"] != "bad\r\nvalue"
 
 
 def test_login_sets_http_only_cookie_and_guards_status(tmp_path: Path, monkeypatch) -> None:

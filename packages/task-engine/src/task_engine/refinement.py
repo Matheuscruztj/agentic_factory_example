@@ -20,15 +20,15 @@ def refine_requirement(
 ) -> RequirementRevision:
     if not operator_comment.strip():
         raise RequirementError("OPERATOR_COMMENT_REQUIRED")
-    approved = session.scalar(
-        select(RequirementRevision).where(
-            RequirementRevision.demand_id == demand.id,
-            RequirementRevision.decision == "approved",
-        )
-    )
-    revision = add_revision(session, demand, content=content, acceptance=acceptance)
-    if approved is not None and revision.version <= approved.version:
+    revisions = session.scalars(
+        select(RequirementRevision)
+        .where(RequirementRevision.demand_id == demand.id)
+        .order_by(RequirementRevision.version.desc())
+    ).all()
+    latest_version = revisions[0].version if revisions else 0
+    if demand.version <= latest_version:
         raise RequirementError("REVISION_VERSION_NOT_MONOTONIC")
+    revision = add_revision(session, demand, content=content, acceptance=acceptance)
     record_audit(
         session,
         subject_type="requirement_revision",

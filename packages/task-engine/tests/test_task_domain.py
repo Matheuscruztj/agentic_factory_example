@@ -121,6 +121,84 @@ def test_state_transition_version_audit_and_idempotency(session: Session) -> Non
             reason="Skip states",
             idempotency_key="event-2",
         )
+    with pytest.raises(TransitionError, match="STALE_VERSION"):
+        apply_transition(
+            session,
+            demand,
+            entity_type="demand",
+            new_state="cancelled",
+            expected_version=1,
+            actor="operator",
+            reason="Stale transition",
+            idempotency_key="event-3",
+        )
+
+
+def test_task_cannot_complete_without_review_evidence(session: Session) -> None:
+    demand = Demand(
+        source="manual",
+        external_id="completion-evidence",
+        title="Completion evidence",
+        demand_type="feature",
+    )
+    session.add(demand)
+    session.flush()
+    task = Task(
+        demand_id=demand.id,
+        title="Reviewed work",
+        owner_role="backend",
+        status="review",
+        result={"summary": "completed without a verified review"},
+    )
+    session.add(task)
+    session.flush()
+    with pytest.raises(TransitionError, match="TASK_COMPLETION_EVIDENCE_REQUIRED"):
+        apply_transition(
+            session,
+            task,
+            entity_type="task",
+            new_state="done",
+            expected_version=task.state_version,
+            actor="worker",
+            reason="Attempt completion without review evidence",
+            idempotency_key="completion-without-review",
+        )
+
+
+def test_retrying_reviewed_task_clears_stale_result(session: Session) -> None:
+    demand = Demand(
+        source="manual",
+        external_id="retry-clears-result",
+        title="Retry clears previous result",
+        demand_type="bug",
+    )
+    session.add(demand)
+    session.flush()
+    task = Task(
+        demand_id=demand.id,
+        title="Retry task",
+        owner_role="backend",
+        status="review",
+        state_version=2,
+        result={"review_status": "reject", "reviewed_sha": "a" * 40},
+    )
+    session.add(task)
+    session.flush()
+
+    apply_transition(
+        session,
+        task,
+        entity_type="task",
+        new_state="ready",
+        expected_version=2,
+        actor="operator",
+        reason="Retry after review findings",
+        idempotency_key="retry-clears-result-event",
+    )
+
+    assert task.status == "ready"
+    assert task.state_version == 3
+    assert task.result is None
 
 
 def test_task_dependencies_are_persisted_and_checked(session: Session) -> None:

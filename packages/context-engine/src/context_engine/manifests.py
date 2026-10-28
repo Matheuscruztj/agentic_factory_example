@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,14 +37,19 @@ def load_manifest(path: str | Path) -> PersonaManifest:
     if not isinstance(data, dict) or set(data) != required:
         raise ValueError("INVALID_MANIFEST_FIELDS")
     if not all(
-        isinstance(data[key], list) and all(isinstance(x, str) for x in data[key])
+        isinstance(data[key], list) and all(isinstance(x, str) and x.strip() for x in data[key])
         for key in ("scope", "tools", "forbidden", "escalation")
     ):
         raise ValueError("INVALID_MANIFEST_LIST")
+    if any(
+        not isinstance(data[key], str) or not data[key].strip()
+        for key in ("id", "goal", "rubric_id")
+    ) or not re.fullmatch(r"[a-z][a-z0-9_-]{1,63}", data["id"]):
+        raise ValueError("INVALID_MANIFEST_IDENTITY")
     if (
-        not isinstance(data["max_tool_calls"], int)
+        type(data["max_tool_calls"]) is not int
         or data["max_tool_calls"] < 0
-        or not isinstance(data["max_context_tokens"], int)
+        or type(data["max_context_tokens"]) is not int
         or data["max_context_tokens"] < 1
     ):
         raise ValueError("INVALID_MANIFEST_LIMIT")

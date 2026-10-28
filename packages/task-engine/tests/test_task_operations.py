@@ -9,9 +9,19 @@ from shared_contracts.db import Base
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from task_engine.audit import render_approved_requirement, snapshot_entity, store_artifact
+from task_engine.execution import execution_plan
 from task_engine.leases import LeaseError, claim_task, commit_worker_result
-from task_engine.models import Demand, EventInbox, EventOutbox, RequirementRevision, Task
+from task_engine.models import (
+    ApprovalRequest,
+    Demand,
+    EventInbox,
+    EventOutbox,
+    RequirementRevision,
+    Task,
+    TaskPathLease,
+)
 from task_engine.outbox import consume_once, enqueue_event, publish_pending
+from task_engine.runs import RunProvenanceError, create_run, record_gate
 from task_engine.scheduler import run_fake_demand
 
 
@@ -49,6 +59,90 @@ def test_claim_fencing_and_stale_worker_rejection(session: Session) -> None:
     assert second and second.fencing_token == 2
     with pytest.raises(LeaseError, match="LEASE_LOST"):
         commit_worker_result(session, task.id, "worker-a", 1, result={"stale": True})
+
+
+def test_priority_aging_prevents_old_work_from_being_starved(session: Session) -> None:
+    from task_engine.leases import PRIORITY_AGING_AFTER
+
+    now = datetime.now(UTC)
+    aged = _task(session, title="aged-low-priority")
+    urgent = _task(session, title="fresh-high-priority")
+    aged.priority = 0
+    aged.created_at = now - PRIORITY_AGING_AFTER - timedelta(seconds=1)
+    urgent.priority = 100
+    urgent.created_at = now
+    session.flush()
+
+    claimed = claim_task(session, "fair-worker")
+
+    assert claimed is not None and claimed.id == aged.id
+
+
+def test_path_leases_serialize_overlaps_and_allow_independent_scopes(session: Session) -> None:
+    broad = _task(session, title="broad")
+    broad.path_scopes = ["apps/customer-registry/**"]
+    overlapping = _task(session, title="overlap")
+    overlapping.path_scopes = ["apps/customer-registry/api/src/users.py"]
+    independent = _task(session, title="independent")
+    independent.path_scopes = ["apps/factory-api/src/main.py"]
+    session.flush()
+
+    first = claim_task(session, "worker-a")
+    second = claim_task(session, "worker-b")
+
+    assert first is not None and first.id == broad.id
+    assert second is not None and second.id == independent.id
+    assert claim_task(session, "worker-c") is None
+
+    commit_worker_result(session, broad.id, "worker-a", first.fencing_token, result={"ok": True})
+    third = claim_task(session, "worker-c")
+    assert third is not None and third.id == overlapping.id
+
+
+def test_path_lease_heartbeat_renews_scope_and_rejects_unsafe_paths(session: Session) -> None:
+    from task_engine.leases import heartbeat
+
+    task = _task(session, title="scoped")
+    task.path_scopes = ["apps/factory-api/**"]
+    session.flush()
+    claimed = claim_task(session, "worker", ttl=timedelta(seconds=10))
+    assert claimed is not None
+
+    expiry = heartbeat(session, task.id, "worker", claimed.fencing_token, ttl=timedelta(minutes=1))
+    lease = session.query(TaskPathLease).filter_by(task_id=task.id).one()
+    assert lease.expires_at.replace(tzinfo=UTC) == expiry
+
+    unsafe = _task(session, title="unsafe")
+    unsafe.path_scopes = ["../../.env"]
+    session.flush()
+    with pytest.raises(LeaseError, match="INVALID_PATH_SCOPE"):
+        claim_task(session, "worker-two")
+    unsafe.path_scopes = ["apps/*/unsupported-middle-glob.py"]
+    session.flush()
+    with pytest.raises(LeaseError, match="INVALID_PATH_SCOPE"):
+        claim_task(session, "worker-three")
+
+
+def test_path_scope_globs_allow_only_terminal_directory_wildcards(session: Session) -> None:
+    from task_engine.leases import _validated_scopes
+
+    assert _validated_scopes(["apps/registry/*"]) == ("apps/registry/*",)
+    assert _validated_scopes(["apps/registry/**"]) == ("apps/registry/**",)
+    for scope in (
+        "apps/**/users.py",
+        "apps/re*gistry/users.py",
+        "apps/registry/?/users.py",
+        "**",
+    ):
+        with pytest.raises(LeaseError, match="INVALID_PATH_SCOPE"):
+            _validated_scopes([scope])
+
+
+def test_single_level_path_scope_overlaps_one_child_only() -> None:
+    from task_engine.leases import _scope_overlaps
+
+    assert _scope_overlaps("apps/registry/*", "apps/registry/users.py")
+    assert not _scope_overlaps("apps/registry/*", "apps/registry/api/users.py")
 
 
 def test_two_workers_cannot_claim_same_task_concurrently(tmp_path) -> None:
@@ -138,8 +232,107 @@ def test_fake_scheduler_runs_dependency_chain_and_dedupes_events(session: Sessio
     add_dependencies(
         session, [analyst.id, backend.id, qa.id], [(backend.id, analyst.id), (qa.id, backend.id)]
     )
-    completed = run_fake_demand(session, demand.id)
-    assert completed == [analyst.id, backend.id, qa.id]
-    assert all(session.get(Task, task_id).status == "done" for task_id in completed)
-    assert session.query(EventInbox).count() == 3
-    assert all(session.get(Task, task_id).result["model_called"] is False for task_id in completed)
+    reviewed = run_fake_demand(session, demand.id)
+    assert reviewed == [analyst.id]
+    assert session.get(Task, analyst.id).status == "review"
+    assert session.get(Task, backend.id).status == "ready"
+    assert session.get(Task, qa.id).status == "ready"
+    assert session.query(EventInbox).count() == 1
+    assert session.get(Task, analyst.id).result["model_called"] is False
+
+
+def test_run_and_gate_provenance_rejects_mismatched_snapshot(session: Session) -> None:
+    task = _task(session)
+    task.path_scopes = ["src/**"]
+    task.acceptance = ["Checks bind to the tested snapshot."]
+    task.execution_spec = {
+        "base_git_sha": "d" * 40,
+        "profile": "python-fixture",
+        "fixture_path": "tests",
+        "context_paths": ["src/app.py"],
+    }
+    revision = RequirementRevision(
+        demand_id=task.demand_id,
+        version=1,
+        content="requirement",
+        acceptance=[],
+        decision="approved",
+    )
+    session.add(revision)
+    session.flush()
+    approval = ApprovalRequest(
+        entity_type="demand",
+        entity_id=task.demand_id,
+        entity_version=1,
+        payload_hash="a" * 64,
+        requested_by="planner",
+        status="approved",
+        decision_by="operator",
+        decided_at=datetime.now(UTC),
+    )
+    session.add(approval)
+    session.flush()
+    enqueue_event(
+        session,
+        f"approval-decided:{approval.id}",
+        "human.approval.decided",
+        {
+            "approval_id": approval.id,
+            "decision": "approved",
+            "payload_hash": approval.payload_hash,
+            "execution_plan": execution_plan(session, task.demand_id),
+        },
+    )
+    run = create_run(
+        session,
+        task_id=task.id,
+        attempt=1,
+        model_id="local-coder",
+        model_digest="sha256:model",
+        prompt_hash="a" * 64,
+        context_hash="b" * 64,
+        skill_hash="c" * 64,
+        requirement_revision_id=revision.id,
+        base_git_sha="d" * 40,
+    )
+    run.result_git_sha = "e" * 40
+    run.tree_hash = "f" * 64
+    evidence = record_gate(
+        session,
+        run_id=run.id,
+        check_name="unit",
+        status="pass",
+        git_sha="e" * 40,
+        tree_hash="f" * 64,
+        suite_hash="1" * 64,
+        tool_hash="2" * 64,
+        config_hash="3" * 64,
+        artifact_sha256="4" * 64,
+    )
+    assert evidence.task_id == task.id and evidence.attempt == 1
+    with pytest.raises(RunProvenanceError, match="GATE_SHA_MISMATCH"):
+        record_gate(
+            session,
+            run_id=run.id,
+            check_name="wrong",
+            status="pass",
+            git_sha="d" * 40,
+            tree_hash="f" * 64,
+            suite_hash="1" * 64,
+            tool_hash="2" * 64,
+            config_hash="3" * 64,
+            artifact_sha256="4" * 64,
+        )
+    with pytest.raises(RunProvenanceError, match="RUN_ATTEMPT_EXISTS"):
+        create_run(
+            session,
+            task_id=task.id,
+            attempt=1,
+            model_id="local-coder",
+            model_digest="sha256:model",
+            prompt_hash="a" * 64,
+            context_hash="b" * 64,
+            skill_hash="c" * 64,
+            requirement_revision_id=revision.id,
+            base_git_sha="d" * 40,
+        )

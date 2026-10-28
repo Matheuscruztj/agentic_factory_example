@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "policy": "local-security-scanners",
+  "fail_on": ["critical", "high"],
+  "tools": {
+    "gitleaks": {"required": true, "scope": "tracked-and-workspace-source", "exclude": [".git", ".runtime", ".venv", "node_modules"]},
+    "bandit": {"required": true, "severity": "medium", "confidence": "medium"},
+    "pip_audit": {"required": true, "scope": "uv.lock"},
+    "pnpm_audit": {"required": true, "scope": "root-lockfile"},
+    "trivy": {"required": false, "scope": "filesystem-and-lockfiles"},
+    "semgrep": {"required": false, "scope": "local-rules"}
+  },
+  "suppressions": [],
+  "notes": "No scanner finding is suppressed here. Required scanner errors fail closed."
+}
