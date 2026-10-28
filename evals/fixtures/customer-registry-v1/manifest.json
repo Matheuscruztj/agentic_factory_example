@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "dataset": "customer-registry-coding-v1",
+  "repository": "apps/customer-registry",
+  "base_revision": "worktree-snapshot-2026-10-25",
+  "version_policy": "immutable-content-hashes-in-evals-dataset-manifest.json",
+  "sandbox": {"mode": "fresh-copy-required", "network": "disabled", "secrets": "none"},
+  "fixtures": ["evals/fixtures/bug-cpf/case.json"],
+  "hidden_tests": "evals/hidden/customer-registry-v1/bug-cpf.assertions.py",
+  "hidden_tests_are_not_executor_context": true
+}

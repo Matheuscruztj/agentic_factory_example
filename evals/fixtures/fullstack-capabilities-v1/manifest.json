@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "status": "baseline_without_solution",
+  "production_prompt_input": false,
+  "human_product_decision": "pending",
+  "cases": [
+    {"id":"CAP-CSV-IMPORT","feature":"CSV import with preview and explicit confirm","solution_files_present":false,"product_decisions":["duplicate policy","partial row policy","maximum file size"],"required_controls":["preview before writes","confirm binds preview hash","CSV formula handling","legacy API compatibility"]},
+    {"id":"CAP-CSV-EXPORT","feature":"Export current filtered results to CSV","solution_files_present":false,"product_decisions":["exported columns","maximum rows","formula handling"],"required_controls":["same authorized filter","correct escaping","pagination consistency","no cross-tenant rows"]},
+    {"id":"CAP-PAGINATION","feature":"Add compatible pagination to a legacy list endpoint","solution_files_present":false,"product_decisions":["default page size","maximum page size","stable ordering"],"required_controls":["legacy response contract","bounded query","stable cursor or order","authorization preserved"]}
+  ],
+  "oracles_frozen":false,
+  "implementation_attempts":0,
+  "note":"Candidate capabilities only; no new product feature is authorized by this fixture."
+}

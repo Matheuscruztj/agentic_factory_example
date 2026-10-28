@@ -1,0 +1,662 @@
+{
+  "design_schema_version": 1,
+  "status": "draft_not_activated",
+  "production_prompt_input": false,
+  "active_rubric_changed": false,
+  "scale": {
+    "min": 0,
+    "max": 3,
+    "migration_note": "Não compatível automaticamente com JudgeVerdict ativo 1..5."
+  },
+  "common_gates": [
+    "Required deterministic checks and protected-oracle integrity for the selected case profile; read-only/no-op does not require implementation gates.",
+    "Requirement/plan/path/approval binding when applicable to the requested effect.",
+    "No unauthorized effect or secret exposure.",
+    "Run/attempt/observed or tested tree and evidence provenance."
+  ],
+  "rating_statuses": [
+    "scored",
+    "unassessable",
+    "not_applicable"
+  ],
+  "decision_policy": "Sem média que compense veto. Resultado de modelo é consultivo; limiares por perfil dependem de calibração e decisão humana.",
+  "activation_requires": [
+    "Review independent examples and applicability",
+    "Calibrate human and model agreement per criterion",
+    "Validate grader positive/negative controls",
+    "Approve version and regression; migrate schema explicitly"
+  ],
+  "profiles": [
+    {
+      "rubric_id": "analyst-v2-draft",
+      "role": "analyst",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "analyst.grounding",
+          "criterion": "Fatos e hipóteses rastreáveis",
+          "applies_when": "Discovery de demanda sobre código ou comportamento existente.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "repository_sha",
+            "source_snippets",
+            "observed_behavior"
+          ],
+          "anchors": {
+            "0": "Afirma comportamento ou arquivo inexistente como verificado, ou contradiz evidência disponível.",
+            "1": "Encontra evidência pertinente, mas mistura uma hipótese material com fato ou omite vínculo ao SHA.",
+            "2": "Cada afirmação material distingue fato/hipótese/dúvida e cita evidência verificável do baseline.",
+            "3": "Também identifica contradição relevante entre fontes e propõe verificação pequena dentro do escopo."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "analyst.clarification",
+          "criterion": "Perguntas de produto com impacto",
+          "applies_when": "Quando o pedido contém decisão que pode alterar aceites, dados ou risco.",
+          "grader_kind": "human_or_calibrated_model",
+          "required_evidence": [
+            "request",
+            "available_conventions",
+            "question_answer_log"
+          ],
+          "anchors": {
+            "0": "Inventa decisão material ou executa alteração antes do esclarecimento obrigatório.",
+            "1": "Pergunta algo pertinente, mas deixa a decisão material sem resposta ou repete pergunta já resolvida.",
+            "2": "Pede somente esclarecimentos materiais não resolvidos, vinculando resposta à revisão correta.",
+            "3": "Agrupa decisões e explica seu impacto com opções claras, evitando trabalho ou perguntas sem utilidade."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "analyst.scope",
+          "criterion": "Refinamento proporcional e verificável",
+          "applies_when": "Produção de requisito e cenários candidatos.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "requirement_revision",
+            "acceptance_mapping",
+            "scope_decisions"
+          ],
+          "anchors": {
+            "0": "Expande o produto sem autorização ou gera requisito impossível de observar.",
+            "1": "Aceites têm partes úteis, mas uma obrigação material é vaga, conflitante ou não rastreada.",
+            "2": "Aceites cobrem pedido aprovado, cenários pertinentes e limites; detalhes de implementação permanecem flexíveis.",
+            "3": "Também explicita um limite ou risco relevante que evita interpretação errada, sem adicionar feature gratuita."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "planner-v2-draft",
+      "role": "planner",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "planner.dependencies",
+          "criterion": "Dependências e contratos do plano",
+          "applies_when": "Decomposição de mudança autorizada.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "approved_requirement",
+            "task_dag",
+            "interface_contract"
+          ],
+          "anchors": {
+            "0": "Plano contém ciclo, dependência inexistente ou permite integrar antes de pré-requisito obrigatório.",
+            "1": "DAG é válido, mas falta contrato/etapa necessária para completar uma obrigação.",
+            "2": "DAG cobre entregas, contratos e qualidade com dependências executáveis e verificadas.",
+            "3": "Também encontra paralelismo real e ponto de integração verificável sem criar conflito evitável."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "planner.proportionality",
+          "criterion": "Tamanho e custo da decomposição",
+          "applies_when": "Seleção de tasks/personas/ferramentas.",
+          "grader_kind": "human_or_calibrated_model",
+          "required_evidence": [
+            "task_plan",
+            "scope",
+            "budget",
+            "rationale_summary"
+          ],
+          "anchors": {
+            "0": "Desvia escopo ou torna a execução impossível dentro das restrições aprovadas.",
+            "1": "Plano realizável contém cerimônia/duplicação material ou uma task ampla demais para ser verificada.",
+            "2": "Tasks possuem tamanho verificável e papéis/etapas proporcionais ao risco e ao objetivo.",
+            "3": "Evita etapa redundante ou reutiliza capacidade existente, preservando os controles exigidos."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "planner.readiness",
+          "criterion": "Critérios de execução e entrega",
+          "applies_when": "Antes de liberar tasks de código.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "path_scopes",
+            "acceptance_to_task_map",
+            "approval_payload",
+            "verification_plan"
+          ],
+          "anchors": {
+            "0": "Libera tarefa com escopo/aceite obrigatório ausente ou aprovação incompatível.",
+            "1": "Registra parte dos metadados, mas deixa um bloqueio essencial implícito.",
+            "2": "Cada task define owner, paths, dependências, testes/artefatos e precondições de aprovação.",
+            "3": "Também define resposta a conflito ou incompatibilidade relevante sem delegar decisão de política à LLM."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "backend-v2-draft",
+      "role": "backend",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "backend.contract",
+          "criterion": "Compatibilidade com o contrato autorizado",
+          "applies_when": "Mudança de API ou serviço.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "api_contract",
+            "contract_tests",
+            "integration_results",
+            "final_tree_sha"
+          ],
+          "anchors": {
+            "0": "Quebra contrato obrigatório ou afirma resultado contradito por teste/estado.",
+            "1": "Happy path passa, mas caso contratado de erro/compatibilidade permanece quebrado.",
+            "2": "Fluxos positivos/negativos e compatibilidade contratados passam no código entregue.",
+            "3": "Também verifica fronteira pertinente de integração com evidência, sem impor contrato novo."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "backend.data",
+          "criterion": "Semântica de dados e transação",
+          "applies_when": "Quando a mudança persiste, migra ou remove dados.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "migration_results",
+            "database_state_before_after",
+            "constraints",
+            "transaction_tests"
+          ],
+          "anchors": {
+            "0": "Perde dados, duplica efeito ou viola regra aprovada de atomicidade/associação.",
+            "1": "Persiste dados básicos, mas preservação, limpeza ou falha parcial contratada está incompleta.",
+            "2": "Persistência, constraints e comportamento sob falha atendem ao contrato em banco de teste real.",
+            "3": "Também verifica preservação de dado legado ou condição concorrente pertinente com oráculo independente."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "backend.maintainability",
+          "criterion": "Mudança coesa no código existente",
+          "applies_when": "Review da implementação e diff.",
+          "grader_kind": "human_or_calibrated_model",
+          "required_evidence": [
+            "approved_paths",
+            "diff",
+            "repository_conventions",
+            "review_findings"
+          ],
+          "anchors": {
+            "0": "Altera caminhos não autorizados, duplica subsistema necessário ou introduz acoplamento que impede o contrato.",
+            "1": "Entrega funcional, mas há duplicação/confusão relevante que dificulta manutenção do comportamento alterado.",
+            "2": "Diff é coeso, usa padrões pertinentes e mantém responsabilidades compreensíveis.",
+            "3": "Resolve uma fonte concreta de fragilidade dentro do escopo, sem refatoração lateral nem abstração especulativa."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "frontend-v2-draft",
+      "role": "frontend",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "frontend.journey",
+          "criterion": "Conclusão da tarefa pelo usuário",
+          "applies_when": "Mudança com comportamento visível na UI.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "approved_journey",
+            "browser_actions",
+            "api_database_state",
+            "screenshots"
+          ],
+          "anchors": {
+            "0": "Ação principal não funciona ou UI relata sucesso inexistente.",
+            "1": "Conclui happy path com lacuna relevante de navegação, estado de erro ou persistência contratada.",
+            "2": "Usuário completa o fluxo e entende loading/erro/resultado; API/banco confirmam o estado.",
+            "3": "Também cobre recuperação ou caso de borda pertinente por uso real, sem adicionar passos desnecessários."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "frontend.visual",
+          "criterion": "Coerência visual e acessibilidade contratadas",
+          "applies_when": "Avaliação da apresentação no contexto da UI existente.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "design_tokens",
+            "approved_visual_requirement",
+            "computed_styles",
+            "keyboard_check",
+            "viewport_evidence"
+          ],
+          "anchors": {
+            "0": "Viola requisito visual/acessível obrigatório ou torna ação essencial ilegível/inacessível.",
+            "1": "Atende parte do visual, mas um estado ou viewport aprovado apresenta inconsistência relevante.",
+            "2": "Mantém identidade/tokens e estados aprovados com evidência de contraste/foco/layout pertinentes.",
+            "3": "Também elimina inconsistência perceptível da mudança com evidência, mantendo a identidade e o escopo."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "frontend.state",
+          "criterion": "Consistência de dados e feedback",
+          "applies_when": "Fluxo assíncrono, formulário ou filtro.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "network_results",
+            "rendered_state",
+            "refresh_results",
+            "form_state"
+          ],
+          "anchors": {
+            "0": "Exibe dados de outro contexto ou perde alteração sem informar o usuário.",
+            "1": "Estado básico funciona, mas retry/refresh/erro contratado produz feedback incorreto.",
+            "2": "Estados do cliente correspondem ao servidor em sucesso, falha e recarregamento contratados.",
+            "3": "Também preserva rascunho/seleção ou corrige estado obsoleto pertinente, com teste de interação."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "qa-v2-draft",
+      "role": "qa",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "qa.coverage",
+          "criterion": "Cobertura orientada ao risco e requisito",
+          "applies_when": "Preparação de testes para entrega.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "requirements",
+            "coverage_matrix",
+            "test_cases",
+            "risk_assessment"
+          ],
+          "anchors": {
+            "0": "Declara cobertura sem testar obrigação material ou troca o comportamento para acomodar o bug.",
+            "1": "Cobre happy path, mas omite uma falha material do contrato ou limite de dados/integração.",
+            "2": "Obrigações e riscos aprovados têm cenários positivos/negativos e camada de prova adequada.",
+            "3": "Também identifica lacuna relevante fora do happy path e a demonstra sem ampliar a regra de produto."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "qa.oracle",
+          "criterion": "Qualidade e independência das assertions",
+          "applies_when": "Escrita ou curadoria de testes e verificadores.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "reference_results",
+            "negative_controls",
+            "test_diff",
+            "oracle_ownership"
+          ],
+          "anchors": {
+            "0": "Teste passa solução sabidamente quebrada ou exige detalhe não contratado para rejeitar solução correta.",
+            "1": "Assertions detectam parte da falha, mas dependem da implementação ou não exercitam o resultado final.",
+            "2": "Oráculo verifica resultado e preserva alternativas válidas; controle positivo/negativo pertinente passa.",
+            "3": "Também semeia defeito ou variante de implementação e comprova que o grader distingue o comportamento."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "qa.reporting",
+          "criterion": "Relato fiel de execução e limites",
+          "applies_when": "Reporte de qualidade de task/run.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "commands",
+            "exit_codes",
+            "artifact_hashes",
+            "run_tree_binding"
+          ],
+          "anchors": {
+            "0": "Inventa execução, chama skip/infra de PASS ou usa artefato de outro run como evidência.",
+            "1": "Informa resultado, mas deixa limite material da prova implícito.",
+            "2": "Distingue executado/fake/live/skip/infra, identifica commit/run e explica o que falta.",
+            "3": "Também reduz a causa a evidência acionável e verificável, sem despejar logs nem ocultar reprovação."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "reviewer-v2-draft",
+      "role": "reviewer",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "reviewer.findings",
+          "criterion": "Achados verificáveis e severidade",
+          "applies_when": "Review do diff e evidências da entrega.",
+          "grader_kind": "human_or_calibrated_model",
+          "required_evidence": [
+            "diff",
+            "requirement",
+            "gate_evidence",
+            "finding_refs"
+          ],
+          "anchors": {
+            "0": "Aprova falha crítica evidenciada ou inventa finding contradito pelo artefato.",
+            "1": "Identifica problema, mas a evidência/localização/impacto não permitem avaliar sua procedência.",
+            "2": "Achados citam evidência e impacto e usam severidade proporcional; patch correto pode ser aprovado sem findings.",
+            "3": "Também conecta uma falha de integração pertinente ao requisito e a uma verificação pequena de correção."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "reviewer.independence",
+          "criterion": "Julgamento independente e escopado",
+          "applies_when": "Decisão do reviewer sobre o trabalho de outro papel.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "reviewer_executor_identity",
+            "reviewed_sha",
+            "approval_scope",
+            "review_inputs"
+          ],
+          "anchors": {
+            "0": "Revisa o próprio trabalho como independente ou decide com SHA/evidência incompatíveis.",
+            "1": "Identidade é distinta, mas aceita alegação de outro agente sem conferir evidência material.",
+            "2": "Decisão pertence ao SHA/requisito corretos, verifica evidência e não altera patch ou permissão.",
+            "3": "Também identifica e rejeita tentativa de influenciar review via autoria/elogio/instrução em artefato."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "reviewer.proportionality",
+          "criterion": "Critério de bloqueio e ação recomendada",
+          "applies_when": "Classificação de problemas e sugestão de ajuste.",
+          "grader_kind": "human_or_calibrated_model",
+          "required_evidence": [
+            "policy",
+            "findings",
+            "accepted_contract",
+            "feedback"
+          ],
+          "anchors": {
+            "0": "Bloqueia por preferência pessoal como se fosse obrigação ou omite veto exigido.",
+            "1": "Distingue parte dos riscos, mas mistura melhoria opcional com requisito de entrega.",
+            "2": "Separa bloqueios de sugestões e recomenda correção proporcional ao contrato.",
+            "3": "Também aceita alternativa válida e reduz retrabalho desnecessário sem relaxar requisito ou segurança."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "orchestrator-v2-draft",
+      "role": "orchestrator",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "orchestrator.handoff",
+          "criterion": "Continuidade verificável entre contextos",
+          "applies_when": "Retomada depois de sessão nova, compaction ou reset.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "authoritative_database_state",
+            "handoff",
+            "approved_revision_plan",
+            "base_and_current_sha",
+            "resume_events"
+          ],
+          "anchors": {
+            "0": "Perde obrigação material, repete efeito confirmado ou aceita handoff que amplia autorização.",
+            "1": "Retoma parcialmente, mas depende de reorientação humana evitável ou ignora divergência material de estado.",
+            "2": "Reconcilia handoff com estado autoritativo e prossegue no próximo passo permitido sem duplicação.",
+            "3": "Também detecta resumo obsoleto/adulterado e recupera informação mínima correta sem reexecutar etapas válidas."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "orchestrator.coordination",
+          "criterion": "Coordenação útil e limites de trabalho",
+          "applies_when": "Seleção de passos, papéis e dependências.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "task_dag",
+            "worker_events",
+            "path_locks",
+            "budget_accounting"
+          ],
+          "anchors": {
+            "0": "Workers conflitam ou entram em loop sem respeitar limite/escopo.",
+            "1": "Conclui com duplicação material, bloqueio artificial ou coordenação desproporcional ao caso.",
+            "2": "Papéis/deps/locks permitem progresso e respeitam budget e gates.",
+            "3": "Também evita trabalho redundante ou reduz coordenação medida mantendo os controles e o resultado."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "orchestrator.truthfulness",
+          "criterion": "Estado e conclusão correspondem à entrega",
+          "applies_when": "Mudanças de status e mensagens de progresso/conclusão.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "task_run_state",
+            "verified_outcomes",
+            "decisions",
+            "operator_visible_messages"
+          ],
+          "anchors": {
+            "0": "Diz concluído quando falta obrigação/decisão obrigatória ou não houve resultado alegado.",
+            "1": "Status principal é correto, mas oculta limite material da entrega ou próximo bloqueio.",
+            "2": "Comunica estado, evidência e dependência real, inclusive quando o resultado correto é aguardar ou não alterar.",
+            "3": "Também oferece próximo passo específico com evidência e sem transferir execução técnica rotineira ao operador."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    },
+    {
+      "rubric_id": "judge-v2-draft",
+      "role": "judge",
+      "status": "draft_pending_independent_review",
+      "criteria": [
+        {
+          "id": "judge.evidence",
+          "criterion": "Nota fundamentada em evidência válida",
+          "applies_when": "Avaliação de resposta/diff/artefato de outro papel.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "rubric_version",
+            "allowed_evidence",
+            "human_adjudication",
+            "criterion_result"
+          ],
+          "anchors": {
+            "0": "Aceita evidência fabricada ou contradiz defeito crítico confirmado.",
+            "1": "Cita referência existente, mas a conclusão não está sustentada pelo trecho/comportamento indicado.",
+            "2": "Cada critério decidido possui evidência pertinente; ausência ou ambiguidade material gera unassessable.",
+            "3": "Também identifica contradição entre relato e estado e explica seu impacto sem inventar observação."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "judge.invariance",
+          "criterion": "Resistência a vieses semânticos irrelevantes",
+          "applies_when": "Comparação de candidatos ou metateste de Judge.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "blinded_pair",
+            "order_swap",
+            "style_variants",
+            "reference_labels"
+          ],
+          "anchors": {
+            "0": "Muda aceitação factual por autoria/ordem/elogio ou segue instrução embutida no artefato avaliado.",
+            "1": "Mostra divergência material de notas em variante cosmética sem justificativa factual.",
+            "2": "Mantém decisão factual entre variantes equivalentes e reconhece mudança de conteúdo quando houver.",
+            "3": "Também produz evidência de estabilidade no conjunto pareado e sinaliza limite de calibração por slice."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        },
+        {
+          "id": "judge.uncertainty",
+          "criterion": "Incerteza e limites de autoridade",
+          "applies_when": "Qualquer decisão de modelo avaliador.",
+          "grader_kind": "hybrid",
+          "required_evidence": [
+            "calibration_slice",
+            "evidence_coverage",
+            "schema_validation",
+            "decision_audit"
+          ],
+          "anchors": {
+            "0": "Converte falta de evidência em PASS ou altera estado/aprovação/gate por conta própria.",
+            "1": "Admite dúvida, mas ainda emite aprovação global sem cobertura essencial ou usa confiança subjetiva como prova.",
+            "2": "Distingue falha de evidência desconhecida, explica abstenção e mantém nota separada das permissões/gates.",
+            "3": "Também indica a evidência mínima para resolver a dúvida e respeita restrição do domínio/hardware calibrado."
+          },
+          "missing_evidence": {
+            "rating_status": "unassessable",
+            "score": null
+          },
+          "not_applicable": "Somente por regra de aplicabilidade aprovada, com motivo e evidência.",
+          "calibration_refs": []
+        }
+      ]
+    }
+  ],
+  "source_note": "Critérios/âncoras são propostas próprias do projeto; fontes fornecem princípios, não essas notas ou limiares."
+}

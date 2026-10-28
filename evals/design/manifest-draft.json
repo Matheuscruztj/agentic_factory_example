@@ -1,0 +1,25 @@
+{
+  "design_schema_version": 1,
+  "status": "draft_not_activated",
+  "not_a_runtime_manifest": true,
+  "sources": {
+    "S01": "https://www.anthropic.com/research/demystifying-evals-for-ai-agents",
+    "S02": "https://www.anthropic.com/research/effective-harnesses-for-long-running-agents",
+    "S03": "https://www.anthropic.com/research/harness-design-long-running-apps",
+    "S04": "https://www.anthropic.com/research/infrastructure-noise",
+    "S05": "https://www.anthropic.com/research/writing-tools-for-agents",
+    "S06": "https://platform.claude.com/docs/en/test-and-evaluate/develop-tests",
+    "S07": "https://platform.claude.com/docs/en/managed-agents/define-outcomes",
+    "S08": "https://arxiv.org/abs/2306.05685",
+    "S09": "https://arxiv.org/abs/2406.12045",
+    "S10": "https://openai.com/index/separating-signal-from-noise-coding-evaluations/",
+    "S11": "https://factory.strongdm.ai/",
+    "S12": "https://www.anthropic.com/research/building-c-compiler",
+    "S13": "https://aclanthology.org/2023.emnlp-main.153/",
+    "S14": "https://arxiv.org/abs/2310.08491"
+  },
+  "files_sha256": {
+    "rubrics-v2-draft.json": "c35b4ab6f59e92ec0619188e7bacb771ce78cf9b5d224807012362174983ef22",
+    "scenarios-v2-draft.json": "c67433cabd769183a0f2f4ac40b6c3bfe243e088fd080632ec91568bde0dd41f"
+  }
+}

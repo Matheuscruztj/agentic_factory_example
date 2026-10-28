@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "dataset": "judge-ai-curation-v1",
+  "label_source": "explicit_synthetic_deterministic_evidence",
+  "verification": "two distinct local AI reviewers; no human gold claim",
+  "train": "evals/goldsets/judge-candidates-v1.jsonl",
+  "holdout": "evals/hidden/judge-holdout-v1.jsonl",
+  "train_cases": 18,
+  "holdout_cases": 6,
+  "production_prompt_input": false,
+  "holdout_is_separate_file": true,
+  "case_ids": "randomized opaque identifiers; rows shuffled"
+}

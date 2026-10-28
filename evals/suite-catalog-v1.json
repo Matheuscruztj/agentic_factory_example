@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "status": "candidate_catalog_not_activated",
+  "production_prompt_input": false,
+  "holdout_claimed": false,
+  "owner": "evals-maintainers",
+  "suites": [
+    {"id": "grader_meta", "version": 1, "owner": "evals-maintainers", "scope": "grader correctness probes", "split_policy": "family_and_origin"},
+    {"id": "judge_calibration", "version": 1, "owner": "evals-maintainers", "scope": "AI judge slice calibration", "split_policy": "family_and_origin"},
+    {"id": "interaction", "version": 1, "owner": "product-quality", "scope": "clarification and proportionality", "split_policy": "family_and_origin"},
+    {"id": "capability", "version": 1, "owner": "product-quality", "scope": "independent implementation capability", "split_policy": "family_and_origin"},
+    {"id": "regression", "version": 1, "owner": "platform-quality", "scope": "known defects and contracts", "split_policy": "family_and_origin"},
+    {"id": "harness_reliability", "version": 1, "owner": "platform-quality", "scope": "retries, recovery, and measurement", "split_policy": "case_level_independent_unit"},
+    {"id": "tool_usability", "version": 1, "owner": "agent-runtime", "scope": "tool selection and recovery", "split_policy": "family_and_origin"}
+  ],
+  "incident_lifecycle": ["candidate", "reviewed", "active", "quarantined", "retired"],
+  "promotion_requires": ["sanitized_source", "independent_review", "family_split_check", "audit_event"],
+  "holdout_policy": "Draft catalog and public candidate data are never secret holdout. Related paraphrases from one family share a split. Failed cases remain visible or quarantined with an audit event."
+}

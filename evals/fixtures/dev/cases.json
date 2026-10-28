@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "dataset": "dev-v1",
+  "split": "dev",
+  "production_prompt_input": false,
+  "cases": [
+    {"id": "dev-cpf-mask", "profile": "security", "expected_verdict": "pass", "expected_label": "pass", "label_source": "bootstrap-oracle-provisional", "deterministic_checks": ["no_real_pii", "masked_output"], "critical": true, "input": "Mask synthetic document 000.000.000-00 in logs."},
+    {"id": "dev-planner-dependencies", "profile": "planner", "expected_verdict": "pass", "expected_label": "pass", "label_source": "bootstrap-oracle-provisional", "deterministic_checks": ["dag_acyclic", "dependencies_preserved"], "critical": false, "input": "Plan migration then API change then UI change."}
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "rubric_id": "evidence-grounded-v1",
+  "scale": {"min": 1, "max": 5},
+  "criteria": ["correctness", "evidence_coverage", "policy_adherence"],
+  "rules": [
+    "Judge only the supplied answer and evidence; do not execute code or infer missing evidence.",
+    "Cite at least one supplied evidence reference for each nontrivial claim.",
+    "Mark uncertain when evidence is incomplete or ambiguous and request human review.",
+    "Missing evidence alone is not a failed result; unresolved evidence must be uncertain.",
+    "Never change an approval, deterministic gate, task state, or prompt activation."
+  ],
+  "judge_persona": "independent-reviewer",
+  "allowed_to_decide_approval": false
+}

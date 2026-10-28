@@ -1,0 +1,29 @@
+{
+  "id": "demo-cpf-checksum-v1",
+  "scope": "isolated-validation-helper",
+  "description": "Naive formatting-only validation accepts an 11-digit CPF with invalid check digits.",
+  "valid_synthetic_example": "52998224725",
+  "invalid_synthetic_example": "52998224726",
+  "not_persisted": true,
+  "production_personal_data": false,
+  "version": "v1",
+  "repository": "apps/customer-registry",
+  "base_revision": "worktree-snapshot-2026-10-25",
+  "allowed_paths": [
+    "api/src/customer_registry/services/cpf.py",
+    "api/tests/test_users.py"
+  ],
+  "visible_requirements": [
+    "Preserve punctuation formatting in the provided helper contract.",
+    "Reject documents with invalid check digits.",
+    "Accept the valid synthetic example."
+  ],
+  "sandbox": {
+    "mode": "fresh-copy-required",
+    "network": "disabled",
+    "secrets": "none",
+    "hidden_tests": "not-mounted-in-agent-worktree"
+  },
+  "hidden_test_bundle": "evals/hidden/customer-registry-v1/bug-cpf.assertions.py",
+  "hidden_test_sha256": "e418a6edfd8ac54012e2a1fa8d9a3679423506936db4c8513e0a3a06be412e06"
+}

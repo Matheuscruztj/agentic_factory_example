@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "dataset": "judge-calibration-v1",
+  "label_source": "bootstrap-oracle-provisional",
+  "cases": [
+    {"id": "judge-clear-pass", "gold": "pass", "answer": "The implementation passes the readiness test and exposes no configuration values.", "evidence": {"artifact:readiness": "pytest reported readiness endpoint returns 200.", "artifact:redaction": "Response schema contains only sanitized service states."}},
+    {"id": "judge-clear-fail", "gold": "fail", "answer": "The unauthenticated endpoint response contains no operator password; it is sanitized and safe to use.", "evidence": {"artifact:security-test": "The test confirms the operator password is present in the unauthenticated JSON response."}},
+    {"id": "judge-uncertain", "gold": "uncertain", "answer": "I cannot determine whether the service handled concurrent writes safely.", "evidence": {"artifact:note": "No concurrency test result is attached."}}
+  ]
+}

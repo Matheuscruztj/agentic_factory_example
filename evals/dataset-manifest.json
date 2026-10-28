@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "manifest": "eval-datasets-v1",
+  "hashes": {
+    "evals/fixtures/dev/cases.json": "9704dcdc5be7f86405b6953ce8a8f17cdc6dd0b23eb4b1331c765ec781e6279c",
+    "evals/fixtures/regression/cases.json": "c01c7b2d7c8031beab71828882515c1061c1cc8d5d8f083fe34707cb251ad602",
+    "evals/fixtures/holdout/cases.json": "4355a5bf988eb4be1e499a32f2868a7ad2191877522bc6329b1510e63a2c4ab0",
+    "evals/fixtures/context/regression-v1.json": "4eb392b1f92b43c0a929791c2e5797d2c58e37050020670b767214e37f278b58",
+    "evals/fixtures/judge-calibration-v1.json": "d3841d026c8c860e691aae445e09ef5aecb57fe95563932c48d2d7746bc74e6c",
+    "evals/rubrics/judge-v1.json": "c40cf727cbe773535edbea3f47fa9f6872e69defa8136a7afa67b92eeda50492"
+  }
+}

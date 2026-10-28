@@ -1,0 +1,10 @@
+{
+  "id": "dependency-update-demo-v1",
+  "package": "demo-parser",
+  "current_version": "1.4.0",
+  "advisory": "DEMO-HIGH-001",
+  "severity": "high",
+  "fixed_version": "1.4.2",
+  "synthetic_advisory": true,
+  "publication_approval_required": true
+}

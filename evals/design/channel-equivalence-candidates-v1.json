@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "status": "ai_review_candidate_not_gold",
+  "review_status": "awaiting_independent_ai_review",
+  "production_prompt_input": false,
+  "cases": [
+    {"family_id":"EQUIV-001","equivalent":true,"language":"pt-BR","channel":"ui","text":"Altere a cor do botão primário para o tema escuro, sem mudar o layout.","intent":{"action":"change_style","target":"primary_button","theme":"dark","preserve":["layout"]}},
+    {"family_id":"EQUIV-001","equivalent":true,"language":"en","channel":"github_issue","text":"Switch the primary button to the dark theme while keeping the layout unchanged.","intent":{"action":"change_style","target":"primary_button","theme":"dark","preserve":["layout"]}},
+    {"family_id":"EQUIV-002","equivalent":true,"language":"pt-BR","channel":"telegram","text":"Mostre o diff e aguarde minha aprovação antes de qualquer publicação.","intent":{"action":"propose_change","target":"current_task","must_wait_for_approval":true,"forbid":["publish"]}},
+    {"family_id":"EQUIV-002","equivalent":true,"language":"en","channel":"ui","text":"Show me the diff and wait for my approval before publishing anything.","intent":{"action":"propose_change","target":"current_task","must_wait_for_approval":true,"forbid":["publish"]}},
+    {"family_id":"CONTROL-001","equivalent":false,"language":"pt-BR","channel":"github_issue","text":"Publique diretamente no repositório agora.","intent":{"action":"publish","target":"repository","must_wait_for_approval":false,"forbid":[]}},
+    {"family_id":"CONTROL-001","equivalent":false,"language":"en","channel":"telegram","text":"Prepare a local proposal and wait for review.","intent":{"action":"propose_change","target":"current_task","must_wait_for_approval":true,"forbid":["publish"]}}
+  ],
+  "split_policy":"All paraphrases and channel renderings of one family remain in one split.",
+  "human_labels_approved":false
+}

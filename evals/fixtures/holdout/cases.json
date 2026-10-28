@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "dataset": "holdout-v1",
+  "split": "holdout",
+  "production_prompt_input": false,
+  "cases": [
+    {"id": "holdout-cpf-false-positive", "profile": "security", "expected_verdict": "pass", "expected_label": "pass", "label_source": "bootstrap-oracle-provisional", "deterministic_checks": ["synthetic_not_mislabeled_live", "no_false_positive"], "critical": false, "input": "Review fixture identifier 000.000.000-00 as synthetic data."},
+    {"id": "holdout-planner-quality", "profile": "planner", "expected_verdict": "pass", "expected_label": "pass", "label_source": "bootstrap-oracle-provisional", "deterministic_checks": ["all_requirements_covered", "no_unscoped_task"], "critical": true, "input": "Plan a backward-compatible API and UI rollout with checks."}
+  ]
+}

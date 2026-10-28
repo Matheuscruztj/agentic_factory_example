@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "dataset": "simulated-issues-v1",
+  "issues": [
+    {"id": "SIM-001", "title": "Reject CPF with invalid check digits", "fixture": "evals/fixtures/bug-cpf/case.json", "external_write": false},
+    {"id": "SIM-002", "title": "Normalize a synthetic Brazilian telephone", "source_fixture": "evals/fixtures/regression/cases.json", "external_write": false}
+  ],
+  "network": "disabled",
+  "credentials": "none"
+}
