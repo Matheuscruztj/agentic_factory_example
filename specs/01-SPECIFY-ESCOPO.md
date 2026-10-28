@@ -1,5 +1,10 @@
 # Agentic Factory Local v2 — SPECIFY / Escopo do Produto
 
+> Inventário atual: [auditoria de 2026-10-24](../docs/auditoria-projeto-2026-10-24.md).
+> Este documento define o produto desejado, sem afirmar que as jornadas estejam
+> implementadas. O [plano E2E](08-PLANO-CONCLUSAO-E2E.md) acrescenta fechamentos
+> e aceites, preservando os invariantes abaixo.
+
 **Estado:** proposta para implementação; nenhum módulo é presumido como existente. **Prioridade:** PoC local single-repository, single-operator, auditável. **Data-base:** 2026-10-24. **Idioma:** código/contratos/docs técnicos em inglês; interface e conversas podem ser em português.
 
 ## 1. Objetivo

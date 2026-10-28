@@ -1,6 +1,25 @@
 # Agentic Factory Local v2 — Variáveis do .env, segredos e pré-requisitos
 
-Este é o catálogo de configuração do **projeto local**. Os arquivos `.env.example` e `.env` do pacote têm os mesmos nomes de variáveis; ambos estão sem credenciais reais. `.env` existe como ponto de partida apenas no ZIP e **deve ser ignorado pelo Git**. Execute `python scripts/setup_local_env.py` em seu terminal local para preencher automaticamente os segredos essenciais e gerar um hash scrypt da senha do operador, sem imprimir senha/segredos.
+Este é o catálogo **de referência**, incluindo variáveis futuras. Não afirma que
+toda variável já seja consumida pelo runtime. FAC-106 deve classificar configuração
+consumida, default suportado e proposta futura. Ver [auditoria atual](../docs/auditoria-projeto-2026-10-24.md).
+
+O `.env` local atual já contém credenciais e é ignorado pelo Git; não o imprimir,
+compartilhar nem recriar durante validação. Para instalação nova, o utilitário
+`python scripts/setup_local_env.py` gera segredos e hash scrypt sem imprimi-los.
+Ele recusa sobrescrever `.env` já configurado.
+
+Diferenças confirmadas em 2026-10-24:
+
+- Variáveis `_CONTAINER` deste catálogo não estão no exemplo atual nem configuram
+  automaticamente serviços; cada processo/container precisa da URL correta.
+- Polling GitHub recebe owner/repo na construção do cliente. Preflight PAT em
+  `/user` não prova repo permitido nem configura worker; FAC-122 fecha a composição.
+- Worker Telegram exige **ambas** `TELEGRAM_ALLOWED_CHAT_IDS` e
+  `TELEGRAM_ALLOWED_USER_IDS`; `TELEGRAM_CHAT_ID` do probe não substitui allowlist.
+- Projects usa atualmente `GITHUB_PROJECT_V2_ID`, não os nomes genéricos da tabela.
+- Judge/evaluador e runtime precisam unificar nomes de modelo/base URL/budgets;
+  declarar variável não comprova aplicação de limite/política. FAC-110/129 tratam isso.
 
 ## A. Obrigatórios para a fase base (local)
 
@@ -57,6 +76,8 @@ O utilitário `setup_local_env.py` gera uma senha URL-safe e a aplica ao Compose
 | `OPENBOT_HEALTH_PATH` | P07 | Rota verificável da versão upstream fixada |
 | `OPENBOT_AUTH_PROBE_PATH` | Quando precisar validar chave live | Rota protegida confirmada durante spike; sem ela health não comprova API key |
 | `OPENBOT_API_KEY` | P07 | Segredo da API OpenBot; deve casar com a config no servidor upstream |
+| `OPENBOT_WORKING_DIRECTORY` | Opcional em discovery/review isolados | Diretório relativo já existente sob `WORKSPACE_ROOT` do OpenBot; valor vem da configuração da Factory, nunca do texto do usuário |
+| `FACTORY_REPOSITORY_SHA` | Com `OPENBOT_WORKING_DIRECTORY` | SHA do snapshot de código que a conversa deve inspecionar; deve corresponder ao diretório selecionado |
 | `OPENBOT_DEFAULT_ACTOR`, `OPENBOT_MAX_BOT_HOPS` | P07 | Defaults internos de roteamento e loop limit |
 | `LANGGRAPH_CHECKPOINT_BACKEND` | P08 | `postgres`, para retomar após restart |
 | `WORKER_ENABLED`, `WORKER_MAX_CONCURRENT_TASKS` | P03/P08 | Execução e paralelismo de atividades |
@@ -67,7 +88,7 @@ O utilitário `setup_local_env.py` gera uma senha URL-safe e a aplica ao Compose
 | `ALLOW_AGENT_MERGE`, `ALLOW_AGENT_DEPLOY` | `false` | Proibidos no local MVP, inclusive via preflight |
 | `HITL_REQUIRED_FOR_*` | `true` | Regras de aprovação transacional |
 
-O OpenBot é **um serviço upstream separado**: ele pode ter seu próprio `.env` e configuração do provedor Ollama na interface/banco. Não assumir que o `.env` da Factory configura automaticamente o OpenBot. Recomendações de segurança: port bind 127.0.0.1, API key e **sem `run_shell` irrestrito para bots de chat**. A documentação upstream descreve `run_shell` como não sandboxed; Tool Gateway e runner devem ficar fora desse processo.
+O OpenBot é **um serviço upstream separado**: ele pode ter seu próprio `.env` e configuração do provedor Ollama na interface/banco. Não assumir que o `.env` da Factory configura automaticamente o OpenBot. Recomendações de segurança: port bind 127.0.0.1, API key e **sem `run_shell` irrestrito para bots de chat**. A documentação upstream descreve `run_shell` como não sandboxed; Tool Gateway e runner devem ficar fora desse processo. Quando `OPENBOT_WORKING_DIRECTORY` é definido, o adapter valida que seja relativo e o OpenBot confirma que o diretório existe dentro do workspace permitido.
 
 ## D. GitHub (somente se habilitado)
 
@@ -77,13 +98,14 @@ O OpenBot é **um serviço upstream separado**: ele pode ter seu próprio `.env`
 | `GITHUB_AUTH_MODE` | `pat` ou `app` | escolher um |
 | `GITHUB_API_URL` | `https://api.github.com` | valor padrão para GitHub.com |
 | `GITHUB_OWNER`, `GITHUB_REPO` | Conta/repositório próprio | necessário para polling |
-| `GITHUB_TOKEN` | Fine-grained PAT, acesso ao repo selecionado | somente modo `pat` |
+| `GITHUB_ALLOWED_REPOSITORIES` | Allowlist explícita `owner/repo` separada por vírgula | Obrigatória para aceitar eventos de webhook; HMAC válido sozinho não autoriza repositório |
+| `GITHUB_TOKEN` | PAT atualmente configurado para o repositório de trabalho | somente modo `pat`; armazenado apenas no `.env` local |
 | `GITHUB_APP_ID`, `GITHUB_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY_PATH` | GitHub App settings/installation | somente modo `app`; `.pem` fora do Git |
 | `GITHUB_WEBHOOK_SECRET` | segredo gerado por você | somente webhook (não necessário no MVP) |
 | `GITHUB_POLL_SECONDS`, `GITHUB_POLL_OVERLAP_SECONDS` | configuração própria | sincronização e reconciliação |
-| `GITHUB_PROJECTS_ENABLED`, `GITHUB_PROJECT_NUMBER`, `GITHUB_PROJECT_ID` | Projects v2 | futuro/opt-in |
+| `GITHUB_PROJECTS_ENABLED`, `GITHUB_PROJECT_V2_ID` | Projects v2 | futuro/opt-in; o client recebe o ID GraphQL do Project v2, sem número genérico |
 
-**Recomendação:** inicialmente fine-grained PAT para leitura de Issues do repositório específico (mínimo `Issues: Read` + metadata). Quando for publicar branch/PR via integração, reavaliar `Contents: Write`, `Pull requests: Write` com HITL obrigatório; não conceder permissões desnecessárias desde o primeiro dia. GitHub App é recomendada como identidade duradoura após PoC. Para Projects pessoais, credenciais podem exigir permissões diferentes das de repositório; tratar como spike específico.
+**Estado atual:** o PAT já configurado no `.env` é usado para as operações GitHub autorizadas neste ambiente. O preflight autenticado e o worker de intake validam leitura do repositório configurado. A troca futura por uma credencial de privilégio mínimo é melhoria de hardening; não é pré-requisito para continuar o trabalho atual. Push e criação de PR continuam sujeitos às aprovações HITL específicas, vinculadas ao repositório e ao SHA. GitHub App permanece uma opção para identidade duradoura. Para Projects pessoais, credenciais podem exigir permissões diferentes de repositório; tratar como spike específico.
 
 `GITHUB_TOKEN` no `.env` **não é** o token automático de GitHub Actions. Nenhum GitHub Secret ou pipeline remoto é necessário nesta fase.
 
@@ -91,7 +113,7 @@ O OpenBot é **um serviço upstream separado**: ele pode ter seu próprio `.env`
 
 | Serviço | Variáveis | Como obter |
 |---|---|---|
-| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_ALLOWED_USER_IDS`, `TELEGRAM_MODE`, `TELEGRAM_POLL_TIMEOUT_SECONDS` | BotFather `/newbot`; `getMe` e `getUpdates` após iniciar conversa para chat/user IDs; long polling sem webhook |
+| Telegram | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_ALLOWED_CHAT_IDS`, `TELEGRAM_ALLOWED_USER_IDS`, `TELEGRAM_FACTORY_UI_URL`, `TELEGRAM_ENABLED`, `TELEGRAM_SEND_ENABLED`, `TELEGRAM_MODE`, `TELEGRAM_POLL_TIMEOUT_SECONDS` | BotFather `/newbot`; `getMe` e `getUpdates` após iniciar conversa para chat/user IDs; ambas allowlists são obrigatórias no worker; `TELEGRAM_SEND_ENABLED=false` mantém saída remota desligada até um ensaio autorizado; long polling sem webhook; decisões sensíveis apontam para a UI autenticada porque ID Telegram ainda não equivale à identidade de operador |
 | Telegram webhook futuro | `TELEGRAM_WEBHOOK_SECRET` | gerar segredo local; não habilitar agora |
 | Jira Cloud | `JIRA_BASE_URL`, `JIRA_EMAIL`, `JIRA_API_TOKEN`, `JIRA_PROJECT_KEY`, `JIRA_CLOUD_ID`, `JIRA_POLL_SECONDS` | token no portal Atlassian; URL e project key na instância Jira |
 | Jira webhook futuro | `JIRA_WEBHOOK_SHARED_SECRET` | segredo próprio em Automation; validar header no receiver |

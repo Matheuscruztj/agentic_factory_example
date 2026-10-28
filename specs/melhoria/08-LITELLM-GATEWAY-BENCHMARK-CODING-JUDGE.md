@@ -1,6 +1,9 @@
 # 08 — SPECIFY + DESIGN + TASKS: LiteLLM Gateway e Benchmark Local de Coding e LLM-as-a-Judge
 
-> **Status:** proposta de implementação / complemento da Agentic Factory Local v2. Não constitui serviço já implementado.  
+> **Status consolidado em 2026-10-27:** as 21 atividades LLMG-T01–T21 estão `done` no marco de componente do [backlog](../implementation-backlog.json), incluindo T21. O texto abaixo preserva o escopo original e não é lista atual de implementação ausente. LiteLLM permanece opt-in. Calibração humana e autoridade de promoção não são comprovadas por esse status; FAC-142 continua aberta no [roteiro de fechamento](../10-FECHAMENTO-DAS-12-PENDENCIAS.md).
+>
+> **Reuso:** adapter único com FAC-110; benchmark direct independente do proxy; runbook independente do dashboard. Não reiniciar o módulo para fechar a fábrica.
+
 > **Escopo:** monorepo próprio; Python/FastAPI + React/shadcn/ui; OpenBot para colaboração, LangGraph para workflows; PostgreSQL/Redis, Ollama na RTX 4060 Ti **8 GB VRAM**, 64 GB RAM, observabilidade self-hosted, HITL.  
 > **Precedência:** este documento rege **apenas** o módulo LiteLLM/benchmark; não substitui `01-SPECIFY`, `02-DESIGN` e `03-TASKS` para o restante da fábrica.  
 > **Decisão:** LiteLLM **opt-in**. Ollama direto continua disponível; nenhum serviço cloud, LangSmith, GitHub Actions ou API paga é obrigatório.  
@@ -285,11 +288,17 @@ Esses comandos são **contratos a implementar**, não scripts afirmados como já
 | LLMG-T18 | Frontend / T12,T15 | Dashboard React com filtros por role/modelo, tab coding/judge, gráficos tempo × qualidade, traces e comparação de prompts | E2E de navegação + estados vazio/erro |
 | LLMG-T19 | Backend / T12,T15 | Persistência resumida e retenção dos artefatos, relatórios `.json` e `.md`, exportação CSV opcional | exclusão de artefatos obsoletos sem eliminar auditoria essencial |
 | LLMG-T20 | SRE / T05,T18 | Runbook: start/stop, modo direct↔proxy, diagnosticar autenticação, modelo ausente, OOM, latência e rollback | cenário LiteLLM offline não bloqueia `direct` |
-| LLMG-T21 | QA / T17,T19,T20 | Aceite E2E: perfis coding e judge, AB proxy/direct, red-team, bloqueio HITL, 8 GB VRAM | relatório final real assinado e parecer humano |
+| LLMG-T21 | QA / T17,T19,T20 | Aceite E2E: perfis coding e judge, AB proxy/direct, red-team, bloqueio HITL, 8 GB VRAM | relatório final de evidências com receipt HMAC de aceite técnico por IA |
 
 **Dependências especiais:** T06/07 podem evoluir em paralelo após T05. T09 exige que o demo de cadastro exista e tenha fixtures estáveis. T13 depende de anotadores humanos. Dashboard P1, **não** bloquear primeiro benchmark CLI.
 
 ## 9. Política de Evals e aprovação (Human-in-the-Loop)
+
+Complemento de planejamento: [evals e rubricas v2](../09-EVALS-RUBRICAS-E-HARNESS.md)
+e FAC-140–152 detalham calibração, validade dos graders, repetição/denominadores
+e vieses. Reutilizar esses contratos em T09–T17; não criar outro sistema de
+rubricas nem converter a escala 1–5 ativa sem migração explícita. Os drafts não
+estão habilitados no runtime.
 
 - Agentes OpenBot podem sugerir mudança de modelo, prompts ou tests; não podem editar `.env`, registry de modelos ativos, rubricas, goldset, políticas ou resultados.
 - LangGraph faz pausa em transições sensíveis: promover `coding`/`judge` alias de produção, usar modelo remoto, aumentar orçamento acima de limite, alterar prompts de base, publicar PR de código da própria fábrica.
@@ -305,4 +314,4 @@ Esses comandos são **contratos a implementar**, não scripts afirmados como já
 
 ## 11. Diretriz curta para a IA implementadora
 
-> Implementar o módulo **LiteLLM Gateway & Local Benchmark** conforme `docs/08-LITELLM-GATEWAY-BENCHMARK-CODING-JUDGE.md` de forma **incremental**, sem substituir OpenBot ou LangGraph, sem habilitar provedores pagos e sem alterar `.env` real. Primeiro L0 (interfaces, preflight e testes offline); depois L1 (LiteLLM e medições direto/proxy); L2 (benchmark com fixtures reais); L3 (Judge, goldset e HITL); L4 (dashboard, runbook). Não declarar benchmark ou modelo vencedor sem medições. Em toda tarefa, imprimir apenas um JSON compacto + exit code e guardar logs extensos fora do contexto do LLM.
+> Implementar o módulo **LiteLLM Gateway & Local Benchmark** conforme `specs/melhoria/08-LITELLM-GATEWAY-BENCHMARK-CODING-JUDGE.md` de forma **incremental**, sem substituir OpenBot ou LangGraph, sem habilitar provedores pagos e sem alterar `.env` real. Primeiro L0 (interfaces, preflight e testes offline); depois L1 (LiteLLM e medições direto/proxy); L2 (benchmark com fixtures reais); L3 (Judge, goldset e HITL); L4 (dashboard, runbook). Não declarar benchmark ou modelo vencedor sem medições. Em toda tarefa, imprimir apenas um JSON compacto + exit code e guardar logs extensos fora do contexto do LLM.

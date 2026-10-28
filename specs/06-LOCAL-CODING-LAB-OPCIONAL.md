@@ -1,5 +1,12 @@
 # Extensão opcional — Local Coding Lab / Ollama Benchmark
 
+> Revisão documental 2026-10-27: a proposta de comparação IDE/Continue/Aider abaixo continua opcional; os componentes comuns do harness LLMG estão `done` no backlog. Não criar laboratório duplicado nem ativar IDEs para fechar as 12 pendências. O benchmark comum
+> deve reutilizar FAC-110/115/116 e LLMG-T04/T08–T12 da
+> [melhoria futura](melhoria/08-LITELLM-GATEWAY-BENCHMARK-CODING-JUDGE.md),
+> evitando outro client/runner concorrente. Comparações IDE/Continue/Aider são
+> extensão opt-in de LLMG-T10, com aceite próprio antes da inclusão. Métricas,
+> fixtures e limites devem permanecer equivalentes. Ver [plano E2E §11](08-PLANO-CONCLUSAO-E2E.md#11-validação-da-melhoria-futura).
+
 Este laboratório é **um add-on de benchmark**, não outro produto nem parte do caminho crítico P00–P13. Serve para medir se `qwen3:4b`, `qwen2.5-coder:7b`, `qwen3:8b` ou outras quantizações são adequadas à RTX 4060 Ti 8 GB + 64 GB RAM, comparando inferência pura, coding agent em IDE e OpenBot/Task Engine. Os modelos são hipóteses; os resultados precisam ser medidos.
 
 ## Escopo de implementação (após P09–P11)

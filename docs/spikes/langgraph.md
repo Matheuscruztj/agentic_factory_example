@@ -1,10 +1,14 @@
 # LangGraph persistence spike
 
-Status: deferred until the PostgreSQL service is initialized and the LangGraph/checkpointer version is selected.
+Status: Python packages pinned; PostgreSQL checkpointer and pause/reopen/resume
+acceptance passed against the local PostgreSQL service.
 
 - The architecture requires a durable PostgreSQL checkpointer; an in-memory saver does not meet restart recovery.
-- No LangGraph package or API is currently assumed in runtime code.
-- Validate pause/resume across process restart, stable `thread_id=run_id`, and idempotent replay before adding the dependency.
-- Current `uv.lock` locks the implemented workspace only; it does not claim a LangGraph integration.
+- `langgraph==1.0.10` and `langgraph-checkpoint-postgres==3.2.0` are selected.
+- The adapter requires `DATABASE_URL`, calls `PostgresSaver.setup()`, and rejects
+  in-memory savers. It never falls back to RAM persistence.
+- Acceptance test closes and reopens `PostgresSaver`, resumes a human interrupt
+  with stable `thread_id=run_id`, and cleans up its unique fixture thread.
+- Retry/DLQ idempotency for external side effects remains pending in FAC-058.
 
 This spike made no network calls and created no remote resources.

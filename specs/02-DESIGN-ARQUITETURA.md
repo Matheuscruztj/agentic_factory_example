@@ -1,5 +1,10 @@
 # Agentic Factory Local v2 — DESIGN / Arquitetura de Referência
 
+> Arquitetura alvo. Para distinguir componentes existentes de ligações pendentes,
+> consultar a [auditoria atual](../docs/auditoria-projeto-2026-10-24.md) e o
+> [plano de fechamento](08-PLANO-CONCLUSAO-E2E.md). Um diagrama ou contrato
+> previsto não constitui prova de runtime integrado.
+
 ## 0. ADRs e escolhas
 
 | ADR | Decisão | Motivo e trade-off |

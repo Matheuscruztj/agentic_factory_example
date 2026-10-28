@@ -1,57 +1,99 @@
-# Estado do projeto
+# Estado atual do fechamento
 
-Atualizado em 2026-10-24. `specs/fases/` contém o status por fase; este arquivo é o controle operacional único das atividades ainda pendentes, waves, dependências e bloqueios. A especificação original e os critérios de aceite permanecem em `specs/03-TASKS-POR-FASES.md`.
+Atualizado em **2026-10-28** após simplificação autorizada e fechamento local das oito atividades restantes.
+Fonte oficial de status: [backlog](specs/implementation-backlog.json). Critérios e
+roteiro operacional: [fechamento das pendências](specs/10-FECHAMENTO-DAS-12-PENDENCIAS.md).
+Histórico anterior: [state antes do fechamento FAC-135](docs/auditoria/state-antes-fechamento-fac135-2026-10-27.md).
 
-## Concluído recentemente
+## Resumo
 
-- P05 / FAC-035: normalização de intake externo e reconciliação idempotente em `packages/task-engine/src/task_engine/intake.py`; 14 testes do Task Engine e Ruff aprovados. Texto externo é preservado como dado não confiável; URLs/anexos aceitam HTTPS e metadados têm limites.
-- P05 / FAC-036–040 e P06 / FAC-041–045: implementação local feita em `packages/integrations/`, `workers/`, `packages/context-engine/`, `packages/task-engine/src/task_engine/refinement.py` e `agents/`. Inclui contratos opt-in, polling com cursores injetáveis, discovery/refinamento, manifests, skills, router, context pack e log compaction. Ruff passou nos módulos; testes de aceite especificados continuam pendentes. Nenhum serviço externo foi chamado.
-- P02 / FAC-014–020: Customer Registry local com API, UI, migrações, seed sintético idempotente e fluxo Playwright.
-- P03 / FAC-021–023: modelos de demandas e revisões, tarefas/DAG e máquina de estados com auditoria e idempotência.
-- P03 / FAC-024–027: leases e fencing tokens, outbox/inbox, audit/artifact/snapshot registry e scheduler fake Analyst → Backend → QA sem LLM.
-- P04 / FAC-028–034: API de demandas/tarefas, client TypeScript com verificação de drift OpenAPI, painel/Kanban, detalhe e DAG, approvals com hash e decisão humana, SSE com cursor/reconexão e Playwright.
-- Validação: 37 testes pytest, Ruff, client OpenAPI sem drift, lint/build/Vitest/Playwright Factory Web, Playwright do Registry e migrações SQLite em upgrade/downgrade/upgrade.
+O backlog contém **174 atividades: 166 `done`, 8 `in_progress`, 0 `todo`**. As oito
+abertas são FAC-131–134 e FAC-136–139. O aceite global segue `pending_ai_acceptance`;
+nenhum receipt global, merge ou deploy foi produzido nesta fase.
 
-## Pendências por fase
+FAC-131 agora tem decisão de produto do operador, revisão EARS v2 reconciliada e plano
+hash-bound; FAC-132 tem runs/worktrees DB/BE, provas PostgreSQL e reviews. FAC-133 teve
+conflito real reproduzido e resolvido em branch isolada; E2E PostgreSQL passou 3/3 no
+SHA integrado final. FAC-133 segue aberta pelo fluxo terminal da child task Factory; revisão local Qwen3
+aprovou as mudanças de integração no SHA final, com escopo/limites registrados.
+FAC-134 ainda depende da revisão da proposta exata do follow-up. FAC-139 depende de
+FAC-131–138, cobertura Sonar mínima de 80% e `quality-full` verde.
 
-### P00 — segurança, inventário e operação
+## Atividades concluídas a preservar
 
-- [ ] FAC-001: repetir baseline em checkout Git real e registrar SHA/estado.
-- [ ] FAC-002: registrar/revisar ADRs e Definition of Done conforme os critérios da fase.
-- [ ] FAC-003: operador gerar `.env` com senha escolhida localmente e confirmar que o arquivo está ignorado, sem expor o conteúdo.
-- [ ] FAC-005: executar e fixar os spikes OpenBot, LangGraph e Ollama quando as ferramentas/serviços estiverem disponíveis.
-- [ ] FAC-006: executar doctor com Factory API, Registry, PostgreSQL e Redis ativos.
+### FAC-121 — retorno visual pelo Telegram
 
-### P01 — bootstrap da stack local
+Demanda `bc16a11c-f654-4738-98f1-45daa2387faa`, raiz `464393985:11`, chegou a
+`completed`. Foram enviados apenas os dois eventos milestone autorizados para essa
+demanda; recibos Telegram 14 e 15 apontam para a mesma raiz. Replay do update
+original manteve uma demanda; replay da outbox enviou zero mensagens. Três eventos
+históricos permanecem pendentes e não foram enviados. Evidências:
+`.runtime/artifacts/next-five/fac121-visual-delivery.json` e
+`fac121-inbound-replay.json`. Receipt IA local `7cddcdfbec476399e7c4`, Qwen3:4b,
+approve, confiança 0,95, HMAC válido. Proveniência Codex-assisted, sem assinatura
+humana.
 
-- [ ] FAC-009: com `.env` criado pelo operador, iniciar PostgreSQL/Redis e validar persistência após restart.
-- [ ] FAC-010–013: executar smoke da Factory API/UI com configuração local, incluindo health, autenticação e status.
+### FAC-130 — auditoria visual de três origens
 
-### P03 — persistência operacional e Task Engine
+Requisitos e planos válidos precederam os novos runs; receipts antigos com decisão
+`proposed` não foram reutilizados. Telegram run `d61cdd57-0bb0-4076-a1c6-95f3fa953fd8`,
+SHA `cc2f8b6ae100d15077c09dc8a49433ed20fa7d43`; UI run
+`02c20356-f737-4c8c-bbe0-6879ce8107a9`, SHA
+`b174262cecb4e735a36f92ef85691bdc2dea118c`; GitHub Issue #3 run
+`d5293601-b994-48ef-85df-f678598436c5`, SHA
+`61e53fef29ca1c79d89a3798802f6ae88af23243`. Build, Playwright em 375/1280 px e
+review Qwen3 passaram; contraste mínimo medido foi >=4,5. Não houve comentário remoto
+GitHub, merge ou deploy. Receipt local `d39224ded49af13026dd`, approve, confiança
+0,95. Proveniência Codex-assisted.
 
-Concluído: FAC-024–027. Evidências: 9 testes `packages/task-engine/tests` aprovados, Ruff aprovado e migration validada em SQLite temporário com upgrade/downgrade/upgrade. A reserva concorrente foi exercitada com dois workers e sessões distintas.
+### FAC-135 — correção reproduzível de bug
 
-### P05 — intake e integrações controladas
+Entrega Codex-assisted `afd40e20cc5b`, run
+`d6f4fc7f-9a66-48d0-b7fd-40572fe90c26`, base
+`08101bc3e12d6a90639ffa065334d5e7034ca382`, resultado
+`8ae305e521955640377f1fe97edc1efbdf36a5da`. Teste vermelho preservado, nove testes
+verdes, API autenticada, plano aprovado, worker versionado e PostgreSQL. Receipt
+independente `2e810762d7e27f4973e7`, approve, confiança 1,0; hashes e HMAC foram
+verificados. Reutilizar `.runtime/artifacts/uat/activities/FAC-135/` no pacote final.
 
-- [x] FAC-035: normalizador e reconciliação idempotente implementados; evidência: `uv run pytest packages/task-engine/tests -q` (14 passed) e Ruff nos arquivos tocados.
-- [~] FAC-036–040: implementação local feita, testes de aceite pendentes. Conectores reais continuam opt-in; FAC-037 recebe callbacks de cursor para persistência e o operador ainda precisa configurar credenciais/allowlists para live. Ruff passou.
+### FAC-142 — avaliação sintética do Judge
 
-### P06 — Context Engine, personas, skills e orçamento
+Concluída com dataset/oráculo determinísticos e revisão independente. Preservar o
+receipt do backlog e as limitações declaradas: `human_agreement=null` e
+`promotion_eligible=false`. Não repetir a avaliação nem solicitar labels humanos;
+verificar seus hashes quando montar o pacote FAC-139.
 
-- [~] FAC-041–045: implementação local feita; executar os testes de aceite definidos em `specs/03-TASKS-POR-FASES.md`. Ruff passou. FAC-046 permanece pendente.
+## Atividades fechadas nesta fase
 
-### P04 — Factory API e UI operacional inicial
+| Atividade | Resultado mínimo concluído | Evidência principal |
+|---|---|---|
+| FAC-131 | Defaults do operador, EARS 10/20 coerente, fronteiras 9/10/11, DAG e histórico de revisão. Autoria assistida declarada. | `specs/demands/feature-tags-e2e/contract-review.md`; `.runtime/artifacts/next-five/fac131-grounded-discovery.json` |
+| FAC-132 | Migrações, CRUD, normalização, limites, atomicidade, associações e rollback validados em PostgreSQL descartável; 29 checks. | `.runtime/artifacts/next-five/postgres-tag-contract-complete.json`; `tags-final-plan-and-runs.json` |
+| FAC-133 | Conflito add/add reproduzido e resolvido; PostgreSQL Playwright 3/3, API 2/2, build e revisão Qwen no SHA `ea5deaa`. Correção de erro duplicado preservada no working tree `main`. | `.runtime/artifacts/next-five/fac133-conflict-resolution.json`; `fac133-final-postgres-e2e.json` |
+| FAC-134 | Contrato de follow-up QA e replay cobertos na bateria focada; proposta pendente não foi aprovada nem despachada. | `.runtime/artifacts/next-five/following-five-review.json` |
+| FAC-136 | Remediação somente em fixture sintética: scanner 21→18→0, hashes conferidos; lockfiles reais intactos. | `.runtime/artifacts/fac136-runs/fac136-scan-881b07725c/`; `.runtime/artifacts/next-five/fac136-dependency-audit-current.json` |
+| FAC-137 | Dois casos representativos de restart de processo/checkpointer PostgreSQL e recovery passaram; sem alegação de matriz R01–R12 exaustiva. | `.runtime/artifacts/fac-137/postgres-process-restart.json` |
+| FAC-138 | Restore/readback Factory, Registry, OpenBot e artefato passaram; testes de redaction/retenção na bateria focada. | `.runtime/artifacts/fac-138/restore-summary.json`; `.runtime/artifacts/next-five/following-five-review.json` |
+| FAC-139 | Relatório local atualizado, 25 testes focados e `quality-fast` 11/11; scorecard global mantém pendência explícita. | `docs/acceptance-report.md`; `.runtime/quality/runs/20261028T044837Z-062eecb2/fast/` |
 
-Concluído: FAC-028–034. Evidências: rotas autenticadas e tipadas, controle de revisão por hash/versão, replay de decisão rejeitado, stream sem dados sensíveis, client verificado contra OpenAPI e fluxo Playwright com scheduler fake.
+## Limites do fechamento
 
-## Próxima wave
+A bateria focada cobre 25 testes; não substitui pilotos reais de Telegram/GitHub,
+`quality-full`, Sonar ≥80%, matriz exaustiva de indisponibilidades, follow-up externo
+aprovado, receipt/HMAC global ou publicação. A proposta QA `80f657fe-4245-438e-85a1-0970c0cb2499`
+continua `pending_review`, sem efeito. O scanner FAC-136 alterou apenas fixture. Dados
+sintéticos PostgreSQL usados no E2E foram descartados. Nenhum segredo foi usado ou
+publicado.
 
-**Próxima atividade: executar os testes de aceite FAC-036–045** com os comandos de `specs/03-TASKS-POR-FASES.md`; então implementar FAC-046. Os testes não foram executados nesta sessão.
+A branch `codex/fac133-conflict-resolution` fica preservada como evidência. Seus ajustes
+relevantes foram aplicados aos arquivos de Registry no working tree `main`; não criei
+merge commit porque o checkout já tinha centenas de alterações locais não commitadas.
 
-Não iniciar integrações externas até as dependências e gates anteriores estarem atendidos.
+## Evidências e handoff
 
-## Bloqueios ambientais (não impedem trabalho local)
-
-- Não há checkout Git neste diretório; FAC-001 requer o repositório Git real.
-- `.env` não foi criado, pois sua senha deve ser escolhida pelo operador; os smokes que exigem credencial e PostgreSQL/Redis ativos continuam pendentes.
-- OpenBot, LangGraph e Ollama reais não foram configurados; manter seus adapters opt-in conforme as specs.
+- Bateria focada: `.runtime/artifacts/next-five/following-five-review.json` (a rodada atual passou 25/25; quality-fast detalhado abaixo).
+- Quality fast: `.runtime/quality/runs/20261028T044837Z-062eecb2/fast/` (11/11).
+- Etiquetas PostgreSQL: `.runtime/artifacts/next-five/postgres-tag-contract-complete.json` e `.runtime/artifacts/next-five/fac133-final-postgres-e2e.json`.
+- Conflito/review: `.runtime/artifacts/next-five/fac133-conflict-resolution.json` e `.runtime/artifacts/next-five/fac133-conflict/qwen-review.json`.
+- Restore/recovery: `.runtime/artifacts/fac-137/postgres-process-restart.json` e `.runtime/artifacts/fac-138/restore-summary.json`.
+- Relatório: `docs/acceptance-report.md`, `pending_ai_acceptance` sem aceite global alegado.

@@ -1,5 +1,11 @@
 # Agentic Factory Local v2 — TASKS / Plano detalhado por fases
 
+> Plano original preservado. Próxima execução: [fechamento das pendências atuais](10-FECHAMENTO-DAS-12-PENDENCIAS.md), com C0 e passos por atividade; não reiniciar este plano original. O status atual está nas [fases auditadas](fases/README.md)
+> e no [backlog](implementation-backlog.json). A [auditoria de 2026-10-24](../docs/auditoria-projeto-2026-10-24.md)
+> reabriu conclusões que só possuíam prova parcial e acrescentou FAC-100–139 no
+> [plano E2E](08-PLANO-CONCLUSAO-E2E.md). Caminhos de referência abaixo não
+> afirmam que os arquivos ou testes existam literalmente.
+
 **Esta lista substitui o antigo plano W0-W11** (que ainda citava NiceGUI, multi-tenant e repositórios externos). É a ordem de implementação proposta, não um relatório de trabalho realizado. Código e testes ainda precisam ser implementados pela equipe/IA. Os caminhos são os *targets* de referência, ajustáveis após o inventário FAC-001.
 
 ## Protocolo obrigatório para toda tarefa
@@ -1252,17 +1258,17 @@
 - **Aceite verificável:** Nenhum prompt override atravessa Tool Gateway/policies.
 - **Validação / evidência mínima:** pytest tests/security -q; salvar `exit_code`, JSON resumido, logs quando houver e revisão do agente/humano pertinente.
 
-### FAC-093 — Aceite humano independente e scorecard final
+### FAC-093 — Aceite técnico independente por IA e scorecard final
 
-- **Responsável (persona):** Reviewer/Human; **lane:** `product`; **risco:** normal.
+- **Responsável (persona):** Reviewer/QA; **lane:** `product`; **risco:** normal.
 - **DependsOn:** `FAC-088`, `FAC-089`, `FAC-090`, `FAC-091`, `FAC-092`.
 - **Arquivos/módulos previstos:** `docs/acceptance-report.md; .runtime/artifacts/uat/`.
 - **Passos de implementação:**
   1. Comparar matriz do SPECIFY com resultados e evidências.
   2. Medir latência/tokens/VRAM/rework em execução real.
-  3. Registrar lacunas e decisão humana para próxima release.
+  3. Registrar lacunas e receipt técnico independente por IA para a entrega; decisões de produto/escopo continuam humanas.
 - **Aceite verificável:** Relatório não diz done se requisito/gate não foi verificado.
-- **Validação / evidência mínima:** Checklist UAT assinado pelo operador; salvar `exit_code`, JSON resumido, logs quando houver e revisão do agente/humano pertinente.
+- **Validação / evidência mínima:** Receipt HMAC por IA vinculado a backlog/evidências; salvar `exit_code`, JSON resumido, logs e revisão independente. Aceite global falha fechado enquanto requisito/gate estiver pendente.
 
 ## P14 — Integrações opcionais e hardening pós-MVP (P1/P2)
 
