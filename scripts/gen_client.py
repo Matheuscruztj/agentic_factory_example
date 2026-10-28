@@ -13,6 +13,11 @@ sys.path[:0] = [
     str(ROOT / "apps/factory-api/src"),
     str(ROOT / "packages/shared-contracts/src"),
     str(ROOT / "packages/task-engine/src"),
+    str(ROOT / "packages/context-engine/src"),
+    str(ROOT / "packages/integrations/src"),
+    str(ROOT / "packages/eval-engine/src"),
+    str(ROOT / "packages/agent-runtime/src"),
+    str(ROOT / "packages/observability/src"),
 ]
 
 from factory_api.main import app  # noqa: E402

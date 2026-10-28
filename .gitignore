@@ -16,12 +16,17 @@ __pycache__/
 # Runtime data and isolated work
 .runtime/
 worktrees/
+fac130-baseline/
 
 # Frontend dependencies/build output
 node_modules/
 dist/
 coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
 
 # Local databases and logs
 *.sqlite3
 *.log
+*:Zone.Identifier

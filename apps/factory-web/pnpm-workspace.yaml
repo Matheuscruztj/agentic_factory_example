@@ -1,4 +1,11 @@
 packages:
   - .
+overrides:
+  postcss-selector-parser: 7.1.6
 allowBuilds:
   esbuild: true
+minimumReleaseAgeExclude:
+  - vitest@4.1.11
+  - '@vitest/mocker@4.1.11 || 4.1.12'
+  - postcss-selector-parser@7.1.6
+  - tinypool@2.1.1 || 2.1.2

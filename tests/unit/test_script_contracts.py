@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from quality_gates.schema import validate_result
+
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -22,12 +24,39 @@ def test_validate_checks_distinguishes_pass_fail_and_invalid(tmp_path: Path) -> 
     passed = tmp_path / "pass.json"
     failed = tmp_path / "fail.json"
     invalid = tmp_path / "invalid.json"
-    passed.write_text(json.dumps({"schema": 1, "check": "unit", "ok": 1}))
-    failed.write_text(json.dumps({"schema": 1, "check": "lint", "ok": 0}))
+    passed.write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "check": "unit",
+                "ok": 1,
+                "status": "pass",
+                "exit_code": 0,
+                "metrics": {},
+                "artifact": None,
+                "errors": [],
+            }
+        )
+    )
+    failed.write_text(
+        json.dumps(
+            {
+                "schema": 1,
+                "check": "lint",
+                "ok": 0,
+                "status": "fail",
+                "exit_code": 1,
+                "metrics": {},
+                "artifact": None,
+                "errors": [],
+            }
+        )
+    )
     invalid.write_text("not-json")
 
     result = invoke("validate_checks.py", str(passed))
     assert result.returncode == 0
+    assert not validate_result(json.loads(result.stdout))
     assert json.loads(result.stdout)["status"] == "pass"
 
     result = invoke("validate_checks.py", str(failed))
@@ -36,6 +65,7 @@ def test_validate_checks_distinguishes_pass_fail_and_invalid(tmp_path: Path) -> 
 
     result = invoke("validate_checks.py", str(invalid))
     assert result.returncode == 2
+    assert not validate_result(json.loads(result.stdout))
     assert json.loads(result.stdout)["status"] == "error"
 
 

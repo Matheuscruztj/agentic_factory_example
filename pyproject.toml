@@ -7,9 +7,16 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+    "agent-runtime[langgraph]",
+    "observability",
+    "bandit>=1.9.4",
     "httpx2>=2.16.0",
-    "pytest>=8.3,<9",
+    "locust>=2.47.0",
+    "mypy>=1.15,<2",
+    "pip-audit>=2.10.1",
+    "pytest>=9.0.3,<10",
     "ruff>=0.11,<1",
+    "coverage>=7.6,<8",
 ]
 api = ["fastapi>=0.115,<1", "uvicorn[standard]>=0.30,<1", "pydantic[email]>=2.8,<3", "sqlalchemy>=2.0,<3", "alembic>=1.14,<2", "psycopg[binary]>=3.2,<4", "redis>=5,<7"]
 
@@ -20,17 +27,32 @@ members = [
   "packages/task-engine",
   "packages/context-engine",
   "packages/integrations",
+  "packages/agent-runtime",
+    "packages/eval-engine",
+  "packages/observability",
   "workers",
 ]
 
 [tool.pytest.ini_options]
 pythonpath = [
+  ".",
   "apps/factory-api/src",
   "packages/shared-contracts/src",
   "packages/task-engine/src",
+    "packages/agent-runtime/src",
+    "packages/context-engine/src",
+    "packages/integrations/src",
+  "packages/quality-gates/src",
+    "packages/eval-engine/src",
+    "workers/src",
+    "packages/observability/src",
   "apps/customer-registry/api/src",
 ]
 testpaths = ["apps", "packages", "tests"]
+
+[tool.uv.sources]
+agent-runtime = { workspace = true }
+observability = { workspace = true }
 
 [tool.ruff]
 line-length = 100
