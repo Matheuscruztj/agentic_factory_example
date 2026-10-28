@@ -1,0 +1,7 @@
+[[allowlists]]
+description = "False positives: generated OpenAPI digest and synthetic prompt-injection canary."
+regexTarget = "line"
+regexes = [
+  '''export const openApiDigest = "[a-f0-9]{64}"''',
+  '''token=CANARY-[a-f0-9]{16}''',
+]

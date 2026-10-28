@@ -1,0 +1,67 @@
+rules:
+  - id: factory.python-dynamic-code
+    languages: [python]
+    severity: ERROR
+    message: Dynamic Python execution requires a security review; do not execute untrusted source.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: exec(...)
+    metadata:
+      severity: high
+      category: security
+      cwe: CWE-95
+  - id: factory.python-shell-true
+    languages: [python]
+    severity: ERROR
+    message: Use a fixed argument vector and shell=False for subprocess execution.
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+    metadata:
+      severity: high
+      category: security
+      cwe: CWE-78
+  - id: factory.python-sql-fstring
+    languages: [python]
+    severity: ERROR
+    message: Bind SQL parameters instead of interpolating values into executable SQL.
+    pattern-either:
+      - patterns:
+          - pattern: $CONN.execute($QUERY, ...)
+          - metavariable-regex:
+              metavariable: $QUERY
+              regex: '(?is)^f["\x27]\s*(select|insert|update|delete|drop|alter|create|with)\b'
+      - pattern: text(f"...")
+    metadata:
+      severity: high
+      category: security
+      cwe: CWE-89
+  - id: factory.python-tls-disabled
+    languages: [python]
+    severity: ERROR
+    message: Do not disable TLS certificate verification for HTTP requests.
+    pattern-either:
+      - pattern: requests.$METHOD(..., verify=False, ...)
+      - pattern: httpx.$METHOD(..., verify=False, ...)
+    metadata:
+      severity: high
+      category: security
+      cwe: CWE-295
+  - id: factory.javascript-dynamic-code
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Avoid dynamic JavaScript code execution.
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+    metadata:
+      severity: high
+      category: security
+      cwe: CWE-95
+  - id: factory.react-raw-html
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: Raw HTML injection requires explicit sanitization and independent review.
+    pattern: <$TAG ... dangerouslySetInnerHTML={$VALUE} ... />
+    metadata:
+      severity: high
+      category: security
+      cwe: CWE-79

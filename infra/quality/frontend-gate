@@ -1,0 +1,68 @@
+#!/opt/runner-venv/bin/python
+"""Trusted sandbox gate entrypoint; dependencies are prepared before task execution."""
+
+import os
+import subprocess
+import shutil
+import sys
+import time
+from pathlib import Path
+
+root = Path('/workspace')
+web = root / 'apps/customer-registry/web'
+modules = Path('/opt/frontend/node_modules')
+env = {**os.environ, 'PYTHONPATH': ':'.join([
+    str(root / 'apps/customer-registry/api/src'),
+    str(root / 'packages/shared-contracts/src'),
+]), 'REGISTRY_SQLITE_PATH': '/tmp/registry.sqlite3'}
+link = web / 'node_modules'
+created_modules = not link.exists()
+if created_modules:
+    link.mkdir()
+    for dependency in modules.iterdir():
+        if dependency.name not in {'.vite', '.vite-temp'}:
+            (link / dependency.name).symlink_to(dependency, target_is_directory=dependency.is_dir())
+processes = []
+config = None
+try:
+    if sys.argv[1] == 'build':
+        subprocess.run(['node', str(modules / 'typescript/bin/tsc'), '-b'], cwd=web, check=True)
+        subprocess.run(['node', str(modules / 'vite/bin/vite.js'), 'build'], cwd=web, check=True)
+    elif sys.argv[1] == 'e2e':
+        processes.append(subprocess.Popen([
+            sys.executable, '-m', 'uvicorn', 'customer_registry.main:app',
+            '--host', '127.0.0.1', '--port', '8010'], cwd=root, env=env))
+        processes.append(subprocess.Popen([
+            'node', str(modules / 'vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '5174'],
+            cwd=web, env=env))
+        import urllib.request
+        for address in ('http://127.0.0.1:8010/health/ready', 'http://127.0.0.1:5174'):
+            for attempt in range(100):
+                try:
+                    urllib.request.urlopen(address, timeout=1).close()
+                    break
+                except OSError:
+                    time.sleep(0.1)
+            else:
+                raise RuntimeError('SANDBOX_TARGET_NOT_READY')
+        # Own config bypasses only webServer startup. Tests remain the worktree's tests.
+        config = web / '.factory-playwright.config.mjs'
+        config.write_text('export default {testDir:"./e2e",testMatch:"**/*.spec.ts",'
+                          'workers:1,timeout:30000,reporter:"line",outputDir:"/tmp/playwright",'
+                          'use:{baseURL:"http://127.0.0.1:5174",headless:true}};')
+        subprocess.run(['node', str(modules / 'playwright/cli.js'), 'test',
+                        '--config', str(config)], cwd=web, env=env, check=True)
+    else:
+        raise ValueError('UNKNOWN_FRONTEND_GATE')
+finally:
+    for process in processes:
+        process.terminate()
+    for process in processes:
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+    if created_modules:
+        shutil.rmtree(link)
+    if config is not None:
+        config.unlink(missing_ok=True)
